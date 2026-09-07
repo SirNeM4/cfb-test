@@ -1,0 +1,12 @@
+node_modules/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Secretos - nunca subir a git
+.env
+config/users.json
+
+# Archivos descargados durante la ejecución de tests
+data/downloads/*
+!data/downloads/.gitkeep

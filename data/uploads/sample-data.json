@@ -1,0 +1,7 @@
+{
+  "description": "Archivo JSON de ejemplo para pruebas de carga de archivos (upload) hacia la web bajo prueba.",
+  "items": [
+    { "id": 1, "name": "Producto de prueba", "quantity": 10 },
+    { "id": 2, "name": "Otro producto", "quantity": 5 }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "admin": {
+    "username": "admin@example.com",
+    "password": "CHANGE_ME"
+  },
+  "standardUser": {
+    "username": "user@example.com",
+    "password": "CHANGE_ME"
+  },
+  "readOnlyUser": {
+    "username": "readonly@example.com",
+    "password": "CHANGE_ME"
+  }
+}
