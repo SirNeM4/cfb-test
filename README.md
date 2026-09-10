@@ -14,9 +14,10 @@ This document explains how to install the project, understand its structure, and
 6. [Test reports](#test-reports)
 7. [Uploading and downloading files in tests](#uploading-and-downloading-files-in-tests)
 8. [Using credentials / test users](#using-credentials--test-users)
-9. [How to add a new test](#how-to-add-a-new-test)
-10. [Troubleshooting](#troubleshooting)
-11. [Best practices and security](#best-practices-and-security)
+9. [Lot Block V2: multi-file upload and visual regression](#lot-block-v2-multi-file-upload-and-visual-regression)
+10. [How to add a new test](#how-to-add-a-new-test)
+11. [Troubleshooting](#troubleshooting)
+12. [Best practices and security](#best-practices-and-security)
 
 ---
 
@@ -186,7 +187,8 @@ cfb-automation/
 │   ├── env.ts                 Loads environment variables from .env
 │   ├── users.ts                Helper to read config/users.json
 │   ├── users.json              Real test credentials (NOT pushed to git)
-│   └── users.example.json      Example template for users.json
+│   ├── users.example.json      Example template for users.json
+│   └── lotBlockFiles.ts        List of files exercised by the lot-block-v2 multi-upload spec
 │
 ├── pages/                     Page Objects (POM pattern)
 │   ├── BasePage.ts             Base class: goto, file upload/download
@@ -198,10 +200,13 @@ cfb-automation/
 │   ├── fixtures/                Reusable Playwright fixtures
 │   └── specs/                   .spec.ts files with the test cases
 │       ├── login.spec.ts
-│       └── lot-block-v2.spec.ts
+│       ├── lot-block-v2.spec.ts
+│       ├── lot-block-v2-multi-upload.spec.ts       Uploads every file in lotBlockFiles, grades it, and checks visual baselines
+│       └── lot-block-v2-multi-upload.spec.ts-snapshots/   Visual regression baselines (tracked in git)
 │
 ├── utils/
-│   └── downloadHelper.ts        Helpers to upload/download files
+│   ├── downloadHelper.ts        Helpers to upload/download files
+│   └── visualCompare.ts         Screenshot baseline creation/comparison helper
 │
 ├── data/
 │   ├── uploads/                 Files (.json, etc.) used to upload during tests
@@ -235,6 +240,7 @@ npm run test:debug    # Run in step-by-step debug mode
 ```bash
 npx playwright test tests/specs/login.spec.ts
 npx playwright test tests/specs/lot-block-v2.spec.ts
+npx playwright test tests/specs/lot-block-v2-multi-upload.spec.ts
 ```
 
 ### Running a single test by name
@@ -248,6 +254,8 @@ npx playwright test -g "can sign in"
 ```bash
 npx playwright test --list
 ```
+
+> Local runs are capped at 3 workers (`playwright.config.ts`). If a spec defines more than 3 tests, the extras queue and start as soon as a worker frees up.
 
 ---
 
@@ -299,6 +307,42 @@ const admin = getUser('admin');
 await page.fill('#username', admin.username);
 await page.fill('#password', admin.password);
 ```
+
+---
+
+## Lot Block V2: multi-file upload and visual regression
+
+`tests/specs/lot-block-v2-multi-upload.spec.ts` runs one test per file listed in `config/lotBlockFiles.ts`. Each test:
+
+1. Logs in and opens `lot-block-v2`.
+2. Uploads the file and waits for the map to finish loading.
+3. Clicks "View all", then a Group/Zone in the left panel, and grades it (right-click on the canvas center with Ctrl+Shift held → "Smoke'em All"), waiting up to 300s for grading to complete.
+4. Re-enters the graded group, navigates to the next valid group, and toggles the lot mesh view, capturing a screenshot at each step for visual regression.
+
+### Adding/removing files
+
+Edit `config/lotBlockFiles.ts`. Each entry needs a `file` (must exist under `data/uploads/`) and a short `key` used to name that file's baseline screenshots:
+
+```ts
+export const lotBlockFiles: LotBlockFileConfig[] = [
+  { file: 'Lake Louisa without sidewalk.json', key: 'lake-louisa' },
+];
+```
+
+To temporarily skip a file without deleting its config, comment out its entry.
+
+### How the visual checks work
+
+`utils/visualCompare.ts` exports `compareOrSaveBaseline(page, testInfo, name)`:
+
+- If no baseline exists yet for `name`, it saves the current screenshot as the baseline and the test passes.
+- If a baseline exists, it compares the current screenshot against it (default tolerance: `maxDiffPixelRatio = 0.02`, i.e. up to 2% of pixels may differ). A mismatch fails the test, and Playwright attaches the actual/expected/diff images to the HTML report — the diff image highlights exactly where the pages differ.
+
+Baselines live in `tests/specs/lot-block-v2-multi-upload.spec.ts-snapshots/` and are committed to git. To intentionally update a baseline after a real UI change, delete the corresponding file(s) and re-run the test so it gets recreated, then review and commit the new image.
+
+### Group/Zone selection rule
+
+The left panel tree mixes Groups, Zones, and Areas (which contain nested Groups/Zones). `LotBlockPage.clickFirstValidGroupOrZone()` walks the tree and clicks the first entry that is either a Group, or any entry nested inside an Area — it skips a standalone Zone that sits directly under "View all" outside of any Area, since that isn't a meaningful grading target.
 
 ---
 

@@ -3,10 +3,10 @@ test-results/
 playwright-report/
 playwright/.cache/
 
-# Secretos - nunca subir a git
+# Secrets - never commit to git
 .env
 config/users.json
 
-# Archivos descargados durante la ejecución de tests
+# Files downloaded during test runs
 data/downloads/*
 !data/downloads/.gitkeep
