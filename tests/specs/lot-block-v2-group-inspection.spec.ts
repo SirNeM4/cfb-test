@@ -50,15 +50,35 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
       // Solution summary) in screenshots.
       await lotBlockPage.clickSkipExport();
 
+      // Keeps a consistent zoom level across entries: if entering the area left the minimap
+      // below 50%, bring it up to 56% before capturing.
+      const defaultPrepareForCapture = () => lotBlockPage.ensureMinimapZoomAtLeast(50, 56);
+
+      // Orbits the 3D camera with a right-click drag (single continuous move, then release)
+      // before capturing — calibrated (with the slow/smooth movement in orbitWithRightDrag) so a
+      // ~130px drag lands on a natural angled view rather than the near edge-on extreme that
+      // larger drags produce.
+      const orbitBeforeCapture = async () => {
+        await lotBlockPage.orbitWithRightDrag([{ dx: 0, dy: -130 }]);
+        await lotBlockPage.releaseRightDrag();
+        // Move the cursor off the canvas so it doesn't show up (and doesn't trigger hover
+        // tooltips/highlights) in the screenshot.
+        await lotBlockPage.moveMouseAway();
+      };
+
       // Walks every Group/Zone/Pond entry, capturing a screenshot per entry. Filenames are keyed
       // by each item's own label (not its position in the panel), so the comparison stays correct
-      // even if the panel re-sorts entries between runs. `suffix` keeps the two passes below
-      // (mesh off/on) from overwriting each other's baselines. On the last Group entry of the
+      // even if the panel re-sorts entries between runs. `suffix` keeps the passes below (2D,
+      // 3D-orbit, mesh) from overwriting each other's baselines. On the last Group entry of the
       // final pass (`verifyPresetOnLastItem`), also confirms the preset actually used for
       // grading matches the Default Preset values set up in grading-settings.setup.ts. Zones and
       // Ponds are skipped for that check: they open a different "zone preset" panel with
       // unrelated fields (grading strategy, drainage), not the Lot-level preset we configured.
-      const inspectAllAreas = async (suffix: string, verifyPresetOnLastItem: boolean) => {
+      const inspectAllAreas = async (
+        suffix: string,
+        verifyPresetOnLastItem: boolean,
+        prepareForCapture: () => Promise<void> = defaultPrepareForCapture
+      ) => {
         // Reset to a known state (the full tree) before walking every entry one by one.
         await lotBlockPage.clickViewAll();
         await lotBlockPage.expectLeftPanelPopulated();
@@ -88,9 +108,7 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
 
         for (const [index, { selector, label }] of itemsToVisit.entries()) {
           await lotBlockPage.clickTreeItem(selector);
-          // Keep a consistent zoom level across entries: if entering the area left the minimap
-          // below 50%, bring it up to 56% before capturing.
-          await lotBlockPage.ensureMinimapZoomAtLeast(50, 56);
+          await prepareForCapture();
           await compareOrSaveBaseline(lotBlockTab, testInfo, `lot-block-inspect-${key}-${label}${suffix}.png`);
 
           if (index === lastGroupIndex) {
@@ -111,10 +129,19 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
         }
       };
 
-      // Pass 1: inspect every area with the lot mesh off (default view).
+      // Pass 1: inspect every area with the lot mesh off (default 2D view).
       await inspectAllAreas('', false);
 
-      // Pass 2: turn on the lot mesh and inspect every area again. The canvas takes a moment to
+      // Pass 2: switch to 3D and orbit the camera on each entry before capturing.
+      await lotBlockPage.clickViewAll();
+      await lotBlockPage.clickSwitchTo3D();
+      await inspectAllAreas('-3d', false, orbitBeforeCapture);
+
+      // Back to 2D before turning on the mesh.
+      await lotBlockPage.clickViewAll();
+      await lotBlockPage.clickSwitchTo2D();
+
+      // Pass 3: turn on the lot mesh and inspect every area again. The canvas takes a moment to
       // finish rendering the mesh, so give it time before the first screenshot of this pass.
       await lotBlockPage.clickViewAll();
       await lotBlockPage.clickShowLotMesh();
