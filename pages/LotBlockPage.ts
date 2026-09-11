@@ -14,11 +14,13 @@ export class LotBlockPage extends BasePage {
   private readonly leftPanelGroupItems: Locator = this.page.locator('[data-zone-group-container="true"]');
   private readonly canvas: Locator = this.page.locator('canvas[data-engine]');
   private readonly smokeEmAllMenuItem: Locator = this.page.getByRole('menuitem', { name: "Smoke'em All" });
-  private readonly gradingQueueTitle: Locator = this.page.locator(
+  private readonly taskPanelTitle: Locator = this.page.locator(
     'header.cursor-grab span.text-xs.font-medium.text-primary-default'
   );
   private readonly backButton: Locator = this.page.locator('button[aria-label="Back"]');
   private readonly showLotMeshButton: Locator = this.page.locator('button[aria-label="Show lot mesh"]');
+  private readonly minimapButton: Locator = this.page.locator('button[aria-label="Minimap"]');
+  private readonly minimapSlider: Locator = this.page.locator('input[type="range"]');
 
   constructor(page: Page) {
     super(page);
@@ -119,7 +121,9 @@ export class LotBlockPage extends BasePage {
       }
 
       await item.locator('[role="button"]').first().click();
-      await this.page.waitForTimeout(2000);
+      // The 3D view (and the lot mesh, once enabled) takes a moment to finish rendering the
+      // newly selected group, so give it a beat before any screenshot is taken.
+      await this.page.waitForTimeout(5000);
       return i;
     }
     throw new Error(`No valid Group/Zone entry found at or after index ${startIndex}`);
@@ -164,7 +168,40 @@ export class LotBlockPage extends BasePage {
 
   /** Waits for the grading queue panel to report "Grading complete" (up to 300s by default). */
   async expectGradingComplete(timeout = 300000): Promise<void> {
-    await expect(this.gradingQueueTitle).toBeVisible({ timeout: 30000 });
-    await expect(this.gradingQueueTitle).toHaveText('Grading complete', { timeout });
+    await expect(this.taskPanelTitle).toBeVisible({ timeout: 30000 });
+    await expect(this.taskPanelTitle).toHaveText('Grading complete', { timeout });
+  }
+
+  /**
+   * Opens the minimap size slider and drags it to `targetPercent` (0-100). The drag is done
+   * with the mouse, then fine-tuned with arrow-key nudges (the slider's step is 0.5) so the
+   * final value lands exactly on target for a deterministic screenshot.
+   */
+  async setMinimapSizeTo(targetPercent: number): Promise<void> {
+    await this.minimapButton.click();
+    await expect(this.minimapSlider).toBeVisible({ timeout: 10000 });
+
+    const box = await this.minimapSlider.boundingBox();
+    if (!box) {
+      throw new Error('Minimap slider bounding box not available.');
+    }
+
+    const currentValue = Number(await this.minimapSlider.inputValue());
+    const startX = box.x + (box.width * currentValue) / 100;
+    const targetX = box.x + (box.width * targetPercent) / 100;
+    const y = box.y + box.height / 2;
+
+    await this.page.mouse.move(startX, y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(targetX, y, { steps: 10 });
+    await this.page.mouse.up();
+
+    for (let i = 0; i < 40; i++) {
+      const value = Number(await this.minimapSlider.inputValue());
+      if (Math.abs(value - targetPercent) < 0.25) {
+        break;
+      }
+      await this.page.keyboard.press(value < targetPercent ? 'ArrowRight' : 'ArrowLeft');
+    }
   }
 }

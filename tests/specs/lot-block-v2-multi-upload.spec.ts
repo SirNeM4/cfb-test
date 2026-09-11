@@ -59,6 +59,9 @@ test.describe('Lot Block V2 - multi file upload', () => {
       await lotBlockPage.clickBack();
       await lotBlockPage.clickFirstValidGroupOrZone();
       await compareOrSaveBaseline(lotBlockTab, testInfo, `lot-block-lot-mesh-first-group-${key}.png`);
+
+      await lotBlockPage.setMinimapSizeTo(56);
+      await compareOrSaveBaseline(lotBlockTab, testInfo, `lot-block-minimap-56-${key}.png`);
     });
   }
 });
