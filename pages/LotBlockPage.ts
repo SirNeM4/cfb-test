@@ -32,6 +32,8 @@ export class LotBlockPage extends BasePage {
     .locator('table')
     .filter({ hasText: 'Preset Settings / Lots' });
   private readonly skipExportButton: Locator = this.page.getByRole('button', { name: 'Skip export' });
+  private readonly switchTo3DButton: Locator = this.page.locator('button[aria-label="Switch to 3D view"]');
+  private readonly switchTo2DButton: Locator = this.page.locator('button[aria-label="Switch to 2D view"]');
 
   constructor(page: Page) {
     super(page);
@@ -211,6 +213,61 @@ export class LotBlockPage extends BasePage {
     await expect(this.skipExportButton).toHaveCount(0, { timeout: 10000 });
   }
 
+  /** Clicks the "3D" toggle next to the minimap, switching the canvas into 3D navigation mode. */
+  async clickSwitchTo3D(): Promise<void> {
+    await this.switchTo3DButton.click();
+    await this.page.waitForTimeout(2000);
+  }
+
+  /** Clicks the "2D" toggle next to the minimap, switching the canvas back to 2D. */
+  async clickSwitchTo2D(): Promise<void> {
+    await this.switchTo2DButton.click();
+    await this.page.waitForTimeout(2000);
+  }
+
+  /** Moves the cursor to a corner of the page, off the canvas, so it and any hover tooltips it triggers don't show up in a screenshot. */
+  async moveMouseAway(): Promise<void> {
+    await this.page.mouse.move(2, 2);
+  }
+
+  /**
+   * Right-clicks the canvas center and, holding the button down, drags the mouse through a
+   * sequence of waypoints (each `{dx, dy}` offset from the previous point) — used to orbit the 3D
+   * camera the way a real drag with several changes of direction would. Leaves the mouse button
+   * held; call `releaseRightDrag()` afterward.
+   */
+  async orbitWithRightDrag(waypoints: { dx: number; dy: number }[]): Promise<void> {
+    const box = await this.canvas.boundingBox();
+    if (!box) {
+      throw new Error('Canvas bounding box not available; the 3D view may not be loaded yet.');
+    }
+    let x = box.x + box.width / 2;
+    let y = box.y + box.height / 2;
+
+    await this.page.mouse.move(x, y);
+    await this.page.mouse.down({ button: 'right' });
+
+    // Move in small increments with a short pause between each, rather than one fast jump — a
+    // real drag is gradual, and moving too fast makes the resulting camera angle inconsistent
+    // between runs.
+    const pxPerStep = 4;
+    const msPerStep = 15;
+    for (const { dx, dy } of waypoints) {
+      const steps = Math.max(1, Math.round(Math.hypot(dx, dy) / pxPerStep));
+      for (let i = 0; i < steps; i++) {
+        x += dx / steps;
+        y += dy / steps;
+        await this.page.mouse.move(x, y);
+        await this.page.waitForTimeout(msPerStep);
+      }
+    }
+  }
+
+  /** Releases the right mouse button after `orbitWithRightDrag()`. */
+  async releaseRightDrag(): Promise<void> {
+    await this.page.mouse.up({ button: 'right' });
+  }
+
   /**
    * Opens the minimap size slider and drags it to `targetPercent` (0-100). The drag is done
    * with the mouse, then fine-tuned with arrow-key nudges (the slider's step is 0.5) so the
@@ -310,7 +367,7 @@ export class LotBlockPage extends BasePage {
 
   /** Opens the "Solution summary" panel for the currently viewed solution. */
   async openSolutionSummary(): Promise<void> {
-    await this.solutionSummaryButton.click();
+    await this.solutionSummaryButton.click({ timeout: 15000 });
     await expect(this.presetsUsedHeader).toBeVisible({ timeout: 10000 });
   }
 
@@ -318,11 +375,13 @@ export class LotBlockPage extends BasePage {
    * Expands the "Presets used" section within the Solution summary panel. The panel can still be
    * mid slide-in when this is called, so a click right after it opens can miss — retry a couple
    * times, checking `aria-expanded` first so an already-successful click isn't toggled back shut.
+   * Every call here is explicitly bounded: without a `timeout`, Playwright locator actions wait
+   * indefinitely (up to the test's own timeout) rather than failing fast.
    */
   async expandPresetsUsed(): Promise<void> {
     for (let attempt = 0; attempt < 3; attempt++) {
-      if ((await this.presetsUsedHeader.getAttribute('aria-expanded')) !== 'true') {
-        await this.presetsUsedHeader.click();
+      if ((await this.presetsUsedHeader.getAttribute('aria-expanded', { timeout: 5000 })) !== 'true') {
+        await this.presetsUsedHeader.click({ timeout: 5000 });
       }
       try {
         await expect(this.presetDetailsButton).toBeVisible({ timeout: 5000 });
@@ -336,7 +395,7 @@ export class LotBlockPage extends BasePage {
 
   /** Clicks "View details" to open the full preset details side panel. */
   async openPresetDetails(): Promise<void> {
-    await this.presetDetailsButton.click();
+    await this.presetDetailsButton.click({ timeout: 15000 });
     await expect(this.presetDetailsHeading).toBeVisible({ timeout: 10000 });
   }
 
