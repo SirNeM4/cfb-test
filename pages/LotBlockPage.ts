@@ -24,6 +24,14 @@ export class LotBlockPage extends BasePage {
   private readonly showLotMeshButton: Locator = this.page.locator('button[aria-label="Show lot mesh"]');
   private readonly minimapButton: Locator = this.page.locator('button[aria-label="Minimap"]');
   private readonly minimapSlider: Locator = this.page.locator('input[type="range"]');
+  private readonly solutionSummaryButton: Locator = this.page.locator('button[aria-label="Solution summary"]');
+  private readonly presetsUsedHeader: Locator = this.page.locator('button.summary-panel-presets-used__header');
+  private readonly presetDetailsButton: Locator = this.page.locator('button.summary-panel-presets-used__details');
+  private readonly presetDetailsHeading: Locator = this.page.getByText('From grading solution');
+  private readonly presetDetailsTable: Locator = this.page
+    .locator('table')
+    .filter({ hasText: 'Preset Settings / Lots' });
+  private readonly skipExportButton: Locator = this.page.getByRole('button', { name: 'Skip export' });
 
   constructor(page: Page) {
     super(page);
@@ -56,7 +64,7 @@ export class LotBlockPage extends BasePage {
    * loading), so once it reaches 0 we keep checking for `stableForMs` and only accept it
    * as "done" if it never reappears during that window.
    */
-  async waitForMapToFinishLoading(timeout = 600000, stableForMs = 10000): Promise<void> {
+  async waitForMapToFinishLoading(timeout = 600000, stableForMs = 4000): Promise<void> {
     await this.mapLoadingIndicator
       .first()
       .waitFor({ state: 'attached', timeout: 15000 })
@@ -160,6 +168,11 @@ export class LotBlockPage extends BasePage {
     await this.showLotMeshButton.click();
   }
 
+  /** Gives the canvas time to finish rendering the lot mesh after it's toggled on (can take up to 5 minutes). */
+  async waitForMeshToRender(timeout = 300000): Promise<void> {
+    await this.waitForMapToFinishLoading(timeout, 5000);
+  }
+
   /** Right-clicks the center of the 3D canvas while holding Ctrl+Shift to open its context menu. */
   async openCanvasContextMenu(): Promise<void> {
     const box = await this.canvas.boundingBox();
@@ -190,6 +203,12 @@ export class LotBlockPage extends BasePage {
   async expectGradingComplete(timeout = 300000): Promise<void> {
     await expect(this.taskPanelTitle).toBeVisible({ timeout: 30000 });
     await expect(this.taskPanelTitle).toHaveText('Grading complete', { timeout });
+  }
+
+  /** Dismisses the "Grading complete" toast via "Skip export" — it otherwise stays on screen and overlaps later panels. */
+  async clickSkipExport(): Promise<void> {
+    await this.skipExportButton.click();
+    await expect(this.skipExportButton).toHaveCount(0, { timeout: 10000 });
   }
 
   /**
@@ -287,5 +306,57 @@ export class LotBlockPage extends BasePage {
   /** True if the "Back" button (e.g. from a solution view) is currently visible. */
   async isBackButtonVisible(): Promise<boolean> {
     return this.backButton.isVisible();
+  }
+
+  /** Opens the "Solution summary" panel for the currently viewed solution. */
+  async openSolutionSummary(): Promise<void> {
+    await this.solutionSummaryButton.click();
+    await expect(this.presetsUsedHeader).toBeVisible({ timeout: 10000 });
+  }
+
+  /**
+   * Expands the "Presets used" section within the Solution summary panel. The panel can still be
+   * mid slide-in when this is called, so a click right after it opens can miss — retry a couple
+   * times, checking `aria-expanded` first so an already-successful click isn't toggled back shut.
+   */
+  async expandPresetsUsed(): Promise<void> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if ((await this.presetsUsedHeader.getAttribute('aria-expanded')) !== 'true') {
+        await this.presetsUsedHeader.click();
+      }
+      try {
+        await expect(this.presetDetailsButton).toBeVisible({ timeout: 5000 });
+        return;
+      } catch {
+        // Not visible yet — loop around and try again.
+      }
+    }
+    await expect(this.presetDetailsButton).toBeVisible({ timeout: 5000 });
+  }
+
+  /** Clicks "View details" to open the full preset details side panel. */
+  async openPresetDetails(): Promise<void> {
+    await this.presetDetailsButton.click();
+    await expect(this.presetDetailsHeading).toBeVisible({ timeout: 10000 });
+  }
+
+  /** The value cell for a given row label (e.g. "max allowed slope") in the preset details table. */
+  private presetDetailValue(label: string): Locator {
+    return this.presetDetailsTable
+      .locator('tr')
+      .filter({ has: this.page.locator('th', { hasText: label }) })
+      .locator('td');
+  }
+
+  /**
+   * Verifies the preset actually used for grading matches the Default Preset values configured
+   * by the grading-settings setup (tests/specs/grading-settings.setup.ts): max slope 6%, stem
+   * walls and retaining walls off, no fence.
+   */
+  async expectPresetMatchesGradingDefaults(): Promise<void> {
+    await expect(this.presetDetailValue('max allowed slope')).toHaveText('6%');
+    await expect(this.presetDetailValue('allow stem walls?')).toHaveText('No');
+    await expect(this.presetDetailValue('allow retaining walls?')).toHaveText('No');
+    await expect(this.presetDetailValue('do you want a fence?')).toHaveText('No');
   }
 }

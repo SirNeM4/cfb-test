@@ -25,12 +25,22 @@ export default defineConfig({
 
   projects: [
     {
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        channel: env.browserChannel, // uses the real Chrome installed on the system
+        headless: env.headless,
+      },
+    },
+    {
       name: 'chrome',
       use: {
         ...devices['Desktop Chrome'],
         channel: env.browserChannel, // uses the real Chrome installed on the system
         headless: env.headless,
       },
+      dependencies: ['setup'],
     },
   ],
 });
