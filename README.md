@@ -14,10 +14,11 @@ This document explains how to install the project, understand its structure, and
 6. [Test reports](#test-reports)
 7. [Uploading and downloading files in tests](#uploading-and-downloading-files-in-tests)
 8. [Using credentials / test users](#using-credentials--test-users)
-9. [Lot Block V2: multi-file upload and visual regression](#lot-block-v2-multi-file-upload-and-visual-regression)
-10. [How to add a new test](#how-to-add-a-new-test)
-11. [Troubleshooting](#troubleshooting)
-12. [Best practices and security](#best-practices-and-security)
+9. [Test projects and setup](#test-projects-and-setup)
+10. [Lot Block V2: multi-file upload and visual regression](#lot-block-v2-multi-file-upload-and-visual-regression)
+11. [How to add a new test](#how-to-add-a-new-test)
+12. [Troubleshooting](#troubleshooting)
+13. [Best practices and security](#best-practices-and-security)
 
 ---
 
@@ -194,15 +195,15 @@ cfb-automation/
 │   ├── BasePage.ts             Base class: goto, file upload/download
 │   ├── LoginPage.ts            Login page
 │   ├── HomePage.ts             Post-login landing page
+│   ├── GradingSettingsPage.ts  Settings → Grading settings → Lot presets page/modal
 │   └── LotBlockPage.ts         "lot-block-v2" file upload page/modal
 │
 ├── tests/
 │   ├── fixtures/                Reusable Playwright fixtures
 │   └── specs/                   .spec.ts files with the test cases
-│       ├── login.spec.ts
-│       ├── lot-block-v2.spec.ts
-│       ├── lot-block-v2-multi-upload.spec.ts       Uploads every file in lotBlockFiles, grades it, and checks visual baselines
-│       └── lot-block-v2-multi-upload.spec.ts-snapshots/   Visual regression baselines (tracked in git)
+│       ├── grading-settings.setup.ts                     Configures the Default Preset's grading options; runs once before every other test (see the "setup" project in playwright.config.ts)
+│       ├── lot-block-v2-group-inspection.spec.ts          Uploads every file in lotBlockFiles, grades it, and checks visual baselines (mesh off, then on)
+│       └── lot-block-v2-group-inspection.spec.ts-snapshots/   Visual regression baselines (tracked in git)
 │
 ├── utils/
 │   ├── downloadHelper.ts        Helpers to upload/download files
@@ -238,10 +239,11 @@ npm run test:debug    # Run in step-by-step debug mode
 ### Running a specific test file
 
 ```bash
-npx playwright test tests/specs/login.spec.ts
-npx playwright test tests/specs/lot-block-v2.spec.ts
-npx playwright test tests/specs/lot-block-v2-multi-upload.spec.ts
+npx playwright test tests/specs/grading-settings.setup.ts
+npx playwright test tests/specs/lot-block-v2-group-inspection.spec.ts
 ```
+
+> `grading-settings.setup.ts` belongs to the `setup` project and always runs once before the `chrome` project's tests (see [Test projects and setup](#test-projects-and-setup)), even if you don't name it explicitly. Running `npx playwright test tests/specs/lot-block-v2-group-inspection.spec.ts` on its own still runs it first.
 
 ### Running a single test by name
 
@@ -310,14 +312,25 @@ await page.fill('#password', admin.password);
 
 ---
 
+## Test projects and setup
+
+`playwright.config.ts` defines two projects:
+
+- **`setup`** — matches `tests/specs/*.setup.ts` (currently just `grading-settings.setup.ts`). It logs in, opens Settings → Grading settings → Lot presets → Default Preset, and makes sure `max_slope` is `6`, "Allow stem Walls?" and "Allow Retaining Walls?" are off, and "Do you want a fence?" is "No" — saving and reloading to confirm the values actually persisted before moving on.
+- **`chrome`** — the real spec suite (currently `lot-block-v2-group-inspection.spec.ts`). It declares `dependencies: ['setup']`, so Playwright always runs `setup` to completion first, even if you run `chrome` tests directly or filter with `-g`.
+
+This exists so every grading run in the suite starts from the same known preset configuration, regardless of what a previous manual session left in that environment.
+
 ## Lot Block V2: multi-file upload and visual regression
 
-`tests/specs/lot-block-v2-multi-upload.spec.ts` runs one test per file listed in `config/lotBlockFiles.ts`. Each test:
+`tests/specs/lot-block-v2-group-inspection.spec.ts` runs one test per file listed in `config/lotBlockFiles.ts`. Each test:
 
 1. Logs in and opens `lot-block-v2`.
 2. Uploads the file and waits for the map to finish loading.
-3. Clicks "View all", then a Group/Zone in the left panel, and grades it (right-click on the canvas center with Ctrl+Shift held → "Smoke'em All"), waiting up to 300s for grading to complete.
-4. Re-enters the graded group, navigates to the next valid group, and toggles the lot mesh view, capturing a screenshot at each step for visual regression.
+3. Clicks "View all", then a Group/Zone in the left panel, and grades it (right-click on the canvas center with Ctrl+Shift held → "Smoke'em All"), waiting up to 300s for grading to complete, then dismisses the "Grading complete" toast via "Skip export" (left open, it overlaps later panels).
+4. Walks every Group/Zone/Pond entry once with the lot mesh off, capturing a screenshot at each one for visual regression.
+5. Turns on the lot mesh (canvas re-render can take up to 5 minutes) and walks every entry again, capturing a second set of screenshots (`-mesh` suffix) so the mesh-on baselines never overwrite the mesh-off ones.
+6. On the last Group entry of that second pass, opens "Solution summary" → "Presets used" → "View details" and confirms the preset actually used for grading matches the values the `setup` project configured (Zones/Ponds are skipped for this check — they open a different "zone preset" panel with unrelated fields).
 
 ### Adding/removing files
 
@@ -329,7 +342,7 @@ export const lotBlockFiles: LotBlockFileConfig[] = [
 ];
 ```
 
-To temporarily skip a file without deleting its config, comment out its entry.
+To temporarily skip a file without deleting its config, comment out its entry (with a short note on why — see the existing `Harbor-reserve...` and `LSF7C-...` entries).
 
 ### How the visual checks work
 
@@ -338,7 +351,7 @@ To temporarily skip a file without deleting its config, comment out its entry.
 - If no baseline exists yet for `name`, it saves the current screenshot as the baseline and the test passes.
 - If a baseline exists, it compares the current screenshot against it (default tolerance: `maxDiffPixelRatio = 0.02`, i.e. up to 2% of pixels may differ). A mismatch fails the test, and Playwright attaches the actual/expected/diff images to the HTML report — the diff image highlights exactly where the pages differ.
 
-Baselines live in `tests/specs/lot-block-v2-multi-upload.spec.ts-snapshots/` and are committed to git. To intentionally update a baseline after a real UI change, delete the corresponding file(s) and re-run the test so it gets recreated, then review and commit the new image.
+Baselines live in `tests/specs/lot-block-v2-group-inspection.spec.ts-snapshots/` and are committed to git. Filenames are suffixed with the platform Playwright ran on (e.g. `-darwin` on macOS, `-win32` on Windows) — a baseline generated on one OS won't be compared against on the other; the first run on a new OS just creates its own set. To intentionally update a baseline after a real UI change, delete the corresponding file(s) and re-run the test so it gets recreated (or run `npx playwright test --update-snapshots` to refresh every mismatching baseline at once), then review and commit the new image.
 
 ### Group/Zone selection rule
 
@@ -349,8 +362,8 @@ The left panel tree mixes Groups, Zones, and Areas (which contain nested Groups/
 ## How to add a new test
 
 1. If the test interacts with a new page, create a Page Object in `pages/` that extends `BasePage`.
-2. Create the test file in `tests/specs/` with a `.spec.ts` extension.
-3. Follow the pattern used in the existing specs (`login.spec.ts`, `lot-block-v2.spec.ts`): instantiate the Page Object(s), use `env` or `getUser()` for credentials, and assert with `expect`.
+2. Create the test file in `tests/specs/` with a `.spec.ts` extension (or `.setup.ts` if it's a prerequisite that should run before the rest of the suite — see [Test projects and setup](#test-projects-and-setup)).
+3. Follow the pattern used in the existing specs (`grading-settings.setup.ts`, `lot-block-v2-group-inspection.spec.ts`): instantiate the Page Object(s), use `env` or `getUser()` for credentials, and assert with `expect`.
 4. Run `npx playwright test --list` to confirm Playwright detects the new file.
 
 ---
