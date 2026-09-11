@@ -13,6 +13,7 @@ export default defineConfig({
 
   use: {
     baseURL: env.baseUrl,
+    colorScheme: 'dark',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',

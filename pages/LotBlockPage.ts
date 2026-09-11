@@ -12,6 +12,9 @@ export class LotBlockPage extends BasePage {
   private readonly mapLoadingIndicator: Locator = this.page.locator('[class~="text-white/20"][class~="text-xs"]');
   private readonly leftPanel: Locator = this.page.locator('[data-lbm-framing-chrome]');
   private readonly leftPanelGroupItems: Locator = this.page.locator('[data-zone-group-container="true"]');
+  private readonly leftPanelAllTreeItems: Locator = this.page.locator(
+    '[data-zone-group-container="true"], [data-child-zone-id]'
+  );
   private readonly canvas: Locator = this.page.locator('canvas[data-engine]');
   private readonly smokeEmAllMenuItem: Locator = this.page.getByRole('menuitem', { name: "Smoke'em All" });
   private readonly taskPanelTitle: Locator = this.page.locator(
@@ -53,7 +56,7 @@ export class LotBlockPage extends BasePage {
    * loading), so once it reaches 0 we keep checking for `stableForMs` and only accept it
    * as "done" if it never reappears during that window.
    */
-  async waitForMapToFinishLoading(timeout = 240000, stableForMs = 10000): Promise<void> {
+  async waitForMapToFinishLoading(timeout = 600000, stableForMs = 10000): Promise<void> {
     await this.mapLoadingIndicator
       .first()
       .waitFor({ state: 'attached', timeout: 15000 })
@@ -92,6 +95,26 @@ export class LotBlockPage extends BasePage {
     await this.page.waitForTimeout(2000);
   }
 
+  /**
+   * The enclosing Area wrapper for this tree entry, if it's nested inside one. The Area header
+   * row is non-interactive ("cursor-default") before grading, and becomes a clickable "Review"
+   * row ("areaReview") once grading completes — match either.
+   */
+  private enclosingArea(item: Locator): Locator {
+    return item.locator(
+      'xpath=ancestor::div[div[contains(@class,"cursor-default") or contains(@class,"areaReview")]][1]',
+    );
+  }
+
+  /** The enclosing Area's label (e.g. "Area 2"), or null if this entry isn't nested in one. */
+  private async enclosingAreaLabel(item: Locator): Promise<string | null> {
+    const area = this.enclosingArea(item);
+    if ((await area.count()) === 0) {
+      return null;
+    }
+    return area.locator('span[title]').first().getAttribute('title');
+  }
+
   /** True if this Group/Zone entry is a Zone (not a Group) that isn't nested inside an Area. */
   private async isStandaloneZone(item: Locator): Promise<boolean> {
     const title = (await item.locator('span[title]').first().getAttribute('title')) ?? '';
@@ -99,10 +122,7 @@ export class LotBlockPage extends BasePage {
       return false;
     }
 
-    const nestedInArea = await item
-      .locator('xpath=ancestor::div[div[contains(@class,"cursor-default")]][1]')
-      .count();
-    return nestedInArea === 0;
+    return (await this.enclosingArea(item).count()) === 0;
   }
 
   /**
@@ -203,5 +223,69 @@ export class LotBlockPage extends BasePage {
       }
       await this.page.keyboard.press(value < targetPercent ? 'ArrowRight' : 'ArrowLeft');
     }
+  }
+
+  /** Reads the current zoom percentage shown on the "Minimap" button (e.g. "43%" -> 43). */
+  async getMinimapPercent(): Promise<number> {
+    const text = (await this.minimapButton.textContent()) ?? '';
+    return Number(text.replace('%', '').trim());
+  }
+
+  /** If the current minimap zoom is below `minPercent`, sets it to `targetPercent`. */
+  async ensureMinimapZoomAtLeast(minPercent: number, targetPercent: number): Promise<void> {
+    const current = await this.getMinimapPercent();
+    if (current < minPercent) {
+      await this.setMinimapSizeTo(targetPercent);
+    }
+  }
+
+  /**
+   * A stable per-entry selector, a short filename-safe label (e.g. "group-2", "pond-1"), and
+   * the label of the enclosing Area (null if the entry isn't nested inside one).
+   */
+  async listTreeItems(): Promise<{ selector: string; label: string; areaLabel: string | null }[]> {
+    const count = await this.leftPanelAllTreeItems.count();
+    const items: { selector: string; label: string; areaLabel: string | null }[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const item = this.leftPanelAllTreeItems.nth(i);
+
+      const id = await item.getAttribute('id');
+      const childZoneId = await item.getAttribute('data-child-zone-id');
+      const selector = id ? `[id="${id}"]` : `[data-child-zone-id="${childZoneId}"]`;
+
+      const titleSpan = item.locator('span[title]').first();
+      const text = (await titleSpan.count())
+        ? ((await titleSpan.getAttribute('title')) ?? '')
+        : ((await item.textContent()) ?? '');
+      const slug = text
+        .replace(/└─/g, '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-+|-+$)/g, '');
+
+      items.push({ selector, label: slug || `item-${i}`, areaLabel: await this.enclosingAreaLabel(item) });
+    }
+
+    return items;
+  }
+
+  /**
+   * Clicks a tree entry located by the stable `selector` from `listTreeItems()` — re-locating
+   * by id/attribute (rather than a raw index) avoids drift if the panel re-sorts entries while
+   * they're being visited one by one. Groups/Zones expose their clickable element as a nested
+   * `[role="button"]`; Pond entries are the `[role="button"]` themselves.
+   */
+  async clickTreeItem(selector: string): Promise<void> {
+    const item = this.page.locator(selector);
+    const target = (await item.getAttribute('role')) === 'button' ? item : item.locator('[role="button"]').first();
+    await target.click();
+    await this.page.waitForTimeout(5000);
+  }
+
+  /** True if the "Back" button (e.g. from a solution view) is currently visible. */
+  async isBackButtonVisible(): Promise<boolean> {
+    return this.backButton.isVisible();
   }
 }
