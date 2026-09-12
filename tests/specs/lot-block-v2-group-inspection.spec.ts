@@ -46,9 +46,26 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
       await lotBlockPage.openCanvasContextMenu();
       await lotBlockPage.clickSmokeEmAll();
       await lotBlockPage.expectGradingComplete();
-      // Dismiss the "Grading complete" toast — left open, it overlaps later panels (e.g. the
-      // Solution summary) in screenshots.
+      // Dismiss the "Grading complete" toast — left open, it overlaps the canvas in screenshots.
       await lotBlockPage.clickSkipExport();
+
+      // Skip export drops us back on the tree/overview, not inside a solution view — enter the
+      // first Group (not a Zone/Pond, which show a different preset panel) so "Solution summary"
+      // is available. Right after grading (instead of later, after the heavier 3D-orbit/mesh
+      // passes) confirm the preset actually used for grading matches the values
+      // grading-settings.setup.ts configured — doing it immediately avoids the tab hang/crash
+      // seen on larger files when this ran at the end of the mesh pass.
+      await lotBlockPage.clickViewAll();
+      await lotBlockPage.expectLeftPanelPopulated();
+      await lotBlockPage.clickFirstGroup();
+      await lotBlockPage.openSolutionSummary();
+      await lotBlockPage.expandPresetsUsed();
+      await lotBlockPage.openPresetDetails();
+      await lotBlockPage.expectPresetMatchesGradingDefaults();
+      await lotBlockPage.closePresetDetails();
+      await lotBlockPage.closeSolutionSummary();
+      // Leave the solution view the same way the rest of the test does, back to the tree.
+      await lotBlockPage.clickBack();
 
       // Keeps a consistent zoom level across entries: if entering the area left the minimap
       // below 50%, bring it up to 56% before capturing.
@@ -69,14 +86,9 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
       // Walks every Group/Zone/Pond entry, capturing a screenshot per entry. Filenames are keyed
       // by each item's own label (not its position in the panel), so the comparison stays correct
       // even if the panel re-sorts entries between runs. `suffix` keeps the passes below (2D,
-      // 3D-orbit, mesh) from overwriting each other's baselines. On the last Group entry of the
-      // final pass (`verifyPresetOnLastItem`), also confirms the preset actually used for
-      // grading matches the Default Preset values set up in grading-settings.setup.ts. Zones and
-      // Ponds are skipped for that check: they open a different "zone preset" panel with
-      // unrelated fields (grading strategy, drainage), not the Lot-level preset we configured.
+      // 3D-orbit, mesh) from overwriting each other's baselines.
       const inspectAllAreas = async (
         suffix: string,
-        verifyPresetOnLastItem: boolean,
         prepareForCapture: () => Promise<void> = defaultPrepareForCapture
       ) => {
         // Reset to a known state (the full tree) before walking every entry one by one.
@@ -96,28 +108,10 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
           return true;
         });
 
-        let lastGroupIndex = -1;
-        if (verifyPresetOnLastItem) {
-          for (let i = itemsToVisit.length - 1; i >= 0; i--) {
-            if (!itemsToVisit[i].label.startsWith('zone-') && !itemsToVisit[i].label.startsWith('pond-')) {
-              lastGroupIndex = i;
-              break;
-            }
-          }
-        }
-
-        for (const [index, { selector, label }] of itemsToVisit.entries()) {
+        for (const { selector, label } of itemsToVisit) {
           await lotBlockPage.clickTreeItem(selector);
           await prepareForCapture();
           await compareOrSaveBaseline(lotBlockTab, testInfo, `lot-block-inspect-${key}-${label}${suffix}.png`);
-
-          if (index === lastGroupIndex) {
-            await lotBlockPage.openSolutionSummary();
-            await lotBlockPage.expandPresetsUsed();
-            await lotBlockPage.openPresetDetails();
-            await lotBlockPage.expectPresetMatchesGradingDefaults();
-            continue;
-          }
 
           // Clicking a graded Group/Zone opens its solution view; return to the tree before the
           // next entry. Ponds don't navigate away, so this is a no-op for them.
@@ -130,12 +124,12 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
       };
 
       // Pass 1: inspect every area with the lot mesh off (default 2D view).
-      await inspectAllAreas('', false);
+      await inspectAllAreas('');
 
       // Pass 2: switch to 3D and orbit the camera on each entry before capturing.
       await lotBlockPage.clickViewAll();
       await lotBlockPage.clickSwitchTo3D();
-      await inspectAllAreas('-3d', false, orbitBeforeCapture);
+      await inspectAllAreas('-3d', orbitBeforeCapture);
 
       // Back to 2D before turning on the mesh.
       await lotBlockPage.clickViewAll();
@@ -146,7 +140,7 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
       await lotBlockPage.clickViewAll();
       await lotBlockPage.clickShowLotMesh();
       await lotBlockPage.waitForMeshToRender();
-      await inspectAllAreas('-mesh', true);
+      await inspectAllAreas('-mesh');
     });
   }
 });

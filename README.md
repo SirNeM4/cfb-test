@@ -327,10 +327,11 @@ This exists so every grading run in the suite starts from the same known preset 
 
 1. Logs in and opens `lot-block-v2`.
 2. Uploads the file and waits for the map to finish loading.
-3. Clicks "View all", then a Group/Zone in the left panel, and grades it (right-click on the canvas center with Ctrl+Shift held → "Smoke'em All"), waiting up to 300s for grading to complete, then dismisses the "Grading complete" toast via "Skip export" (left open, it overlaps later panels).
-4. Walks every Group/Zone/Pond entry once with the lot mesh off, capturing a screenshot at each one for visual regression.
-5. Turns on the lot mesh (canvas re-render can take up to 5 minutes) and walks every entry again, capturing a second set of screenshots (`-mesh` suffix) so the mesh-on baselines never overwrite the mesh-off ones.
-6. On the last Group entry of that second pass, opens "Solution summary" → "Presets used" → "View details" and confirms the preset actually used for grading matches the values the `setup` project configured (Zones/Ponds are skipped for this check — they open a different "zone preset" panel with unrelated fields).
+3. Clicks "View all", then a Group/Zone in the left panel, and grades it (right-click on the canvas center with Ctrl+Shift held → "Smoke'em All"), waiting up to 300s for grading to complete, then dismisses the "Grading complete" toast via "Skip export" (left open, it overlaps the canvas).
+4. Enters the first **Group** (never a Zone or Pond — they show a different "zone preset" panel with unrelated fields) and confirms the preset actually used for grading matches the values `grading-settings.setup.ts` configured: opens "Solution summary" → "Presets used" → "View details", checks the values, then closes the details panel ("X") and the summary panel (clicking "Solution summary" again) before going back to the tree. This runs once per file, right after grading — running it later, after the heavier 3D/mesh passes, was crashing the tab on larger files.
+5. Walks every Group/Zone/Pond entry once with the lot mesh off (2D), capturing a screenshot at each one for visual regression.
+6. Switches to the 3D view and walks every entry again, orbiting the camera with a slow right-click drag before each capture (`-3d` suffix), then switches back to 2D.
+7. Turns on the lot mesh (canvas re-render can take up to 5 minutes) and walks every entry a third time, capturing a final set of screenshots (`-mesh` suffix) so none of the three passes overwrite each other's baselines.
 
 ### Adding/removing files
 
