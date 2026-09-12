@@ -24,6 +24,9 @@ export class LotBlockPage extends BasePage {
   private readonly showLotMeshButton: Locator = this.page.locator('button[aria-label="Show lot mesh"]');
   private readonly minimapButton: Locator = this.page.locator('button[aria-label="Minimap"]');
   private readonly minimapSlider: Locator = this.page.locator('input[type="range"]');
+  private readonly skipExportButton: Locator = this.page.getByRole('button', { name: 'Skip export' });
+  private readonly switchTo3DButton: Locator = this.page.locator('button[aria-label="Switch to 3D view"]');
+  private readonly switchTo2DButton: Locator = this.page.locator('button[aria-label="Switch to 2D view"]');
   private readonly solutionSummaryButton: Locator = this.page.locator('button[aria-label="Solution summary"]');
   private readonly presetsUsedHeader: Locator = this.page.locator('button.summary-panel-presets-used__header');
   private readonly presetDetailsButton: Locator = this.page.locator('button.summary-panel-presets-used__details');
@@ -31,9 +34,9 @@ export class LotBlockPage extends BasePage {
   private readonly presetDetailsTable: Locator = this.page
     .locator('table')
     .filter({ hasText: 'Preset Settings / Lots' });
-  private readonly skipExportButton: Locator = this.page.getByRole('button', { name: 'Skip export' });
-  private readonly switchTo3DButton: Locator = this.page.locator('button[aria-label="Switch to 3D view"]');
-  private readonly switchTo2DButton: Locator = this.page.locator('button[aria-label="Switch to 2D view"]');
+  private readonly presetDetailsCloseButton: Locator = this.page
+    .locator('h3', { has: this.page.getByText('From grading solution') })
+    .locator('xpath=following-sibling::button');
 
   constructor(page: Page) {
     super(page);
@@ -360,6 +363,19 @@ export class LotBlockPage extends BasePage {
     await this.page.waitForTimeout(5000);
   }
 
+  /**
+   * Clicks the first "Group" entry in the tree — a Zone or Pond won't do, since they show a
+   * different "zone preset" panel with unrelated fields.
+   */
+  async clickFirstGroup(): Promise<void> {
+    const items = await this.listTreeItems();
+    const group = items.find((item) => item.label.startsWith('group-'));
+    if (!group) {
+      throw new Error('No Group entry found in the tree.');
+    }
+    await this.clickTreeItem(group.selector);
+  }
+
   /** True if the "Back" button (e.g. from a solution view) is currently visible. */
   async isBackButtonVisible(): Promise<boolean> {
     return this.backButton.isVisible();
@@ -369,6 +385,12 @@ export class LotBlockPage extends BasePage {
   async openSolutionSummary(): Promise<void> {
     await this.solutionSummaryButton.click({ timeout: 15000 });
     await expect(this.presetsUsedHeader).toBeVisible({ timeout: 10000 });
+  }
+
+  /** Clicks "Solution summary" again to hide the panel. */
+  async closeSolutionSummary(): Promise<void> {
+    await this.solutionSummaryButton.click({ timeout: 15000 });
+    await expect(this.presetsUsedHeader).toBeHidden({ timeout: 10000 });
   }
 
   /**
@@ -397,6 +419,16 @@ export class LotBlockPage extends BasePage {
   async openPresetDetails(): Promise<void> {
     await this.presetDetailsButton.click({ timeout: 15000 });
     await expect(this.presetDetailsHeading).toBeVisible({ timeout: 10000 });
+    // The heading renders before the data table does — wait for the table itself, and for the
+    // specific row this is checked against, so we don't read values before they're populated.
+    await expect(this.presetDetailsTable).toBeVisible({ timeout: 15000 });
+    await expect(this.presetDetailValue('max allowed slope')).toBeVisible({ timeout: 15000 });
+  }
+
+  /** Closes the preset details side panel via its "X" button. */
+  async closePresetDetails(): Promise<void> {
+    await this.presetDetailsCloseButton.click({ timeout: 15000 });
+    await expect(this.presetDetailsHeading).toBeHidden({ timeout: 10000 });
   }
 
   /** The value cell for a given row label (e.g. "max allowed slope") in the preset details table. */
