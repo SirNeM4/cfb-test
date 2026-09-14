@@ -37,6 +37,21 @@ export class LotBlockPage extends BasePage {
   private readonly presetDetailsCloseButton: Locator = this.page
     .locator('h3', { has: this.page.getByText('From grading solution') })
     .locator('xpath=following-sibling::button');
+  // Per-element (Group/Zone/Pond) preset & constraint assignment, used instead of "Smoke'em All"
+  // when a specific preset/constraint needs to be applied rather than the account-wide default.
+  private readonly presetAssignmentDropdownTrigger: Locator = this.page
+    .locator('input[name="preset"]')
+    .locator('xpath=preceding-sibling::div[1]');
+  private readonly constraintAssignmentDropdownTrigger: Locator = this.page.locator(
+    'span.min-w-0.flex-1.truncate',
+    { hasText: 'Apply constraints' }
+  );
+  private readonly applyConstraintsButton: Locator = this.page.getByRole('button', {
+    name: 'Apply constraints',
+    exact: true,
+  });
+  private readonly areaSubmitButton: Locator = this.page.locator('button.rounded-full.bg-primary-default');
+  private readonly areaProcessingIndicator: Locator = this.page.getByText('Processing...');
 
   constructor(page: Page) {
     super(page);
@@ -52,9 +67,14 @@ export class LotBlockPage extends BasePage {
     await this.uploadFile(this.fileUploadInput, fileName);
   }
 
-  /** Clicks "Upload a new file to process". */
+  /**
+   * Clicks "Upload a new file to process" and confirms the upload modal actually closed —
+   * failing fast here instead of silently proceeding into the much longer
+   * `waitForMapToFinishLoading` wait if the click never actually submitted anything.
+   */
   async submitUpload(): Promise<void> {
     await this.uploadButton.click();
+    await expect(this.fileUploadLabel).toBeHidden({ timeout: 20000 });
   }
 
   /** Verifies that the "View all" element exists after the file is processed. */
@@ -353,13 +373,18 @@ export class LotBlockPage extends BasePage {
   /**
    * Clicks a tree entry located by the stable `selector` from `listTreeItems()` — re-locating
    * by id/attribute (rather than a raw index) avoids drift if the panel re-sorts entries while
-   * they're being visited one by one. Groups/Zones expose their clickable element as a nested
-   * `[role="button"]`; Pond entries are the `[role="button"]` themselves.
+   * they're being visited one by one. Pond entries are the `[role="button"]` themselves. A
+   * Group/Zone container's own `[role="button"]` wrapper spans its *entire* card, including any
+   * nested child Pond rows below it — clicking that wrapper directly lands on whatever's at its
+   * bounding-box center, which for a zone with ponds is a pond row, not the zone's own header.
+   * Its header content is marked `[data-parent-zone="true"]` regardless of whether it has
+   * children, so target that specifically instead.
    */
   async clickTreeItem(selector: string): Promise<void> {
     const item = this.page.locator(selector);
-    const target = (await item.getAttribute('role')) === 'button' ? item : item.locator('[role="button"]').first();
-    await target.click();
+    const role = await item.getAttribute('role', { timeout: 10000 });
+    const target = role === 'button' ? item : item.locator('[data-parent-zone="true"]').first();
+    await target.click({ timeout: 10000 });
     await this.page.waitForTimeout(5000);
   }
 
@@ -449,5 +474,44 @@ export class LotBlockPage extends BasePage {
     await expect(this.presetDetailValue('allow stem walls?')).toHaveText('No');
     await expect(this.presetDetailValue('allow retaining walls?')).toHaveText('No');
     await expect(this.presetDetailValue('do you want a fence?')).toHaveText('No');
+  }
+
+  /** Verifies a single row's value in the currently open preset details table. */
+  async expectPresetDetailValue(label: string, expectedValue: string): Promise<void> {
+    await expect(this.presetDetailValue(label)).toHaveText(expectedValue);
+  }
+
+  /** Assigns `presetName` to the currently selected Group via the "Apply preset" dropdown. */
+  async assignPresetToSelection(presetName: string): Promise<void> {
+    await this.presetAssignmentDropdownTrigger.click({ timeout: 10000 });
+    await this.page.getByRole('menuitem', { name: presetName, exact: true }).click({ timeout: 10000 });
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Confirms the default Zone Constraint for the currently selected Zone/Pond. There's no list to
+   * pick from here — the dropdown opens an inline form (Grading Strategy, Elevation, Slopes)
+   * already pre-filled with the default values, and "Apply constraints" is already enabled.
+   */
+  async applyDefaultConstraintToSelection(): Promise<void> {
+    await this.constraintAssignmentDropdownTrigger.click({ timeout: 10000 });
+    await this.applyConstraintsButton.click({ timeout: 10000 });
+    await this.page.waitForTimeout(500);
+  }
+
+  /** True once every Group/Zone/Pond in the current Area has a preset/constraint assigned. */
+  async isAreaSubmitReady(): Promise<boolean> {
+    return this.areaSubmitButton.isVisible().catch(() => false);
+  }
+
+  /** Clicks the round per-Area "Submit" action, grading every configured element at once. */
+  async submitAreaForGrading(): Promise<void> {
+    await this.areaSubmitButton.click({ timeout: 15000 });
+  }
+
+  /** Waits for the "Processing..." toolbar state to clear after `submitAreaForGrading()`. */
+  async waitForAreaGradingComplete(timeout = 300000): Promise<void> {
+    await this.areaProcessingIndicator.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
+    await expect(this.areaProcessingIndicator).toBeHidden({ timeout });
   }
 }
