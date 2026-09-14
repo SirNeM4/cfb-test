@@ -7,12 +7,15 @@ import { env } from '../../config/env';
 
 // One-off (Lake Louisa only, the fastest file — see [[feedback_new_test_workflow]]): creates a
 // custom Lot preset (deleting a stale one from a previous run first, so this stays idempotent
-// instead of accumulating duplicates) and edits only three things on it: restrict it to Lot Type
-// A only, and turn stem walls / retaining walls / fence off. Every other field is left at
-// whatever a freshly-created preset defaults to — this test reads that actual default value
-// dynamically (rather than assuming one) so it can confirm the SAME value shows up later in the
-// graded Solution Summary, proving the whole preset (edited fields and untouched ones alike)
-// really gets applied during grading, not just the fields this test happens to change.
+// instead of accumulating duplicates) and explicitly edits a handful of fields on it: restrict it
+// to Lot Type A only, turn stem walls / retaining walls / fence off, and pin the PAD & Finished
+// Floor reference point to "Highest Elevation Point of the Lot" (this one's deliberately a real
+// requirement, not just captured, since relying on whatever a fresh preset defaults to here would
+// silently pass even if it inherited the wrong value — which is exactly what happened once).
+// Every other field is left at whatever a freshly-created preset defaults to — this test reads
+// that actual value dynamically (rather than assuming one) so it can confirm the SAME value shows
+// up later in the graded Solution Summary, proving the whole preset (edited fields and untouched
+// ones alike) really gets applied during grading, not just the fields this test happens to change.
 // The preset is intentionally left in place afterward (not deleted) for later inspection.
 //
 // The set of Groups/Zones/Ponds is dynamic — it depends on the uploaded file and how grading
@@ -49,6 +52,7 @@ test('custom Lot preset is created, edited, assigned per-Group, and applied duri
   await gradingSettingsPage.ensureStemWallsOff();
   await gradingSettingsPage.ensureRetainingWallsOff();
   await gradingSettingsPage.ensureFenceNo();
+  await gradingSettingsPage.ensureReferencePointHighestElevation();
 
   // Snapshot every field on the preset — the three just edited above, and whatever the untouched
   // ones (Lot Setbacks, drainage slopes, PAD/finished floor, water crossing, swale position, ...)

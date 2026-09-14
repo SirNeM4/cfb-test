@@ -290,6 +290,13 @@ export class GradingSettingsPage extends BasePage {
     await this.ensureToggleOff(this.stemWallsToggle);
   }
 
+  /** Ensures the PAD & Finished Floor reference point is "Highest Elevation Point of the Lot". */
+  async ensureReferencePointHighestElevation(): Promise<void> {
+    if (!(await this.referencePointHighestRadio.isChecked())) {
+      await this.referencePointHighestRadio.check();
+    }
+  }
+
   /** Ensures the "Allow Retaining Walls?" priority toggle is off. */
   async ensureRetainingWallsOff(): Promise<void> {
     await this.ensureToggleOff(this.retainingWallsToggle);
