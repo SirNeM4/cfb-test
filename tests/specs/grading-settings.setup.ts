@@ -6,15 +6,14 @@ import { env } from '../../config/env';
 
 // "Default Preset" is shared across the whole account, so leaving any of its fields to whatever a
 // previous manual session set them to makes grading (and its visual regression baselines) drift
-// between runs. Pin every field to a fixed, known configuration instead — the same values
-// `lot-preset-custom-grading.spec.ts`'s "QA Preset" uses, except Default Preset accepts both Lot
-// Type A and B (QA Preset is restricted to A only).
+// between runs. Pin every field to a fixed, known-good configuration instead — matching what the
+// account was manually verified to have.
 const DEFAULT_PRESET_VALUES: FullPresetValues = {
-  frontSetback: 11,
-  sideSetback: 6,
-  rearSetback: 11,
-  rearSetbackMaxSlope: 22,
-  sideSetbackMaxSlope: 35,
+  frontSetback: 10,
+  sideSetback: 5,
+  rearSetback: 10,
+  rearSetbackMaxSlope: 20,
+  sideSetbackMaxSlope: 33,
   minSlope: 1,
   maxSlope: 6,
   maxDrivewaySlope: 15,
