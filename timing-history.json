@@ -1,26 +1,32 @@
 {
   "lake-louisa@app-dev.drtwrk.io": {
-    "durationMs": 111900,
-    "recordedAt": "2026-09-14T23:16:18.220Z"
+    "durationMs": 114106,
+    "recordedAt": "2026-09-14T23:47:45.612Z",
+    "appVersion": "Source: Development · v0.74.109"
   },
   "coleman-ridge@app-dev.drtwrk.io": {
-    "durationMs": 396653,
-    "recordedAt": "2026-09-14T23:21:02.892Z"
+    "durationMs": 439438,
+    "recordedAt": "2026-09-14T23:53:11.039Z",
+    "appVersion": "Source: Development · v0.74.109"
   },
   "goose-creek@app-dev.drtwrk.io": {
-    "durationMs": 549600,
-    "recordedAt": "2026-09-14T23:23:35.919Z"
+    "durationMs": 568174,
+    "recordedAt": "2026-09-14T23:55:19.778Z",
+    "appVersion": "Source: Development · v0.74.109"
   },
   "lake-louisa@app-staging.drtwrk.io": {
-    "durationMs": 98701,
-    "recordedAt": "2026-09-14T23:08:32.903Z"
+    "durationMs": 100678,
+    "recordedAt": "2026-09-14T23:39:25.199Z",
+    "appVersion": "Source: Staging · v0.74.108"
   },
   "goose-creek@app-staging.drtwrk.io": {
-    "durationMs": 288988,
-    "recordedAt": "2026-09-14T23:11:43.181Z"
+    "durationMs": 297722,
+    "recordedAt": "2026-09-14T23:42:42.344Z",
+    "appVersion": "Source: Staging · v0.74.108"
   },
   "coleman-ridge@app-staging.drtwrk.io": {
-    "durationMs": 346412,
-    "recordedAt": "2026-09-14T23:12:40.512Z"
+    "durationMs": 242744,
+    "recordedAt": "2026-09-14T23:41:47.354Z",
+    "appVersion": "Source: Staging · v0.74.108"
   }
 }

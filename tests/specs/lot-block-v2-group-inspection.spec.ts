@@ -24,6 +24,7 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
       // so a slow run against the current environment can be told apart from a genuine visual
       // regression — see recordAndCheckTiming.
       const startedAt = Date.now();
+      let appVersion: string | undefined;
 
       const loginPage = new LoginPage(page);
       const homePage = new HomePage(page);
@@ -32,6 +33,7 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
         await loginPage.open();
         await loginPage.login(env.defaultUser.username, env.defaultUser.password);
         await loginPage.expectLoggedIn();
+        appVersion = await homePage.getAppVersion();
 
         // The "lot-block-v2" link opens a new tab with the upload modal.
         const [lotBlockTab] = await Promise.all([context.waitForEvent('page'), homePage.clickLotBlockV2()]);
@@ -88,6 +90,9 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
           // Move the cursor off the canvas so it doesn't show up (and doesn't trigger hover
           // tooltips/highlights) in the screenshot.
           await lotBlockPage.moveMouseAway();
+          // Give the 3D view a moment to finish settling after the orbit before capturing —
+          // without this, a slower environment can catch it mid-render.
+          await lotBlockTab.waitForTimeout(500);
         };
 
         // Walks every Group/Zone/Pond entry, capturing a screenshot per entry. Filenames are keyed
@@ -151,7 +156,7 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
       } finally {
         // Recorded even on failure, so a slow run can be correlated with a visual diff from the
         // same run instead of only ever seeing timings for passing runs.
-        recordAndCheckTiming(testInfo, key, new URL(env.baseUrl).host, Date.now() - startedAt);
+        recordAndCheckTiming(testInfo, key, new URL(env.baseUrl).host, Date.now() - startedAt, appVersion);
       }
     });
   }

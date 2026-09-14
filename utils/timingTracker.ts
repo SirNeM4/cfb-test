@@ -11,6 +11,8 @@ const SIGNIFICANT_INCREASE_RATIO = 0.3;
 interface TimingEntry {
   durationMs: number;
   recordedAt: string;
+  /** e.g. "Source: Development · v0.74.109" — read from the home page, when available. */
+  appVersion?: string;
 }
 
 type TimingHistory = Record<string, TimingEntry>;
@@ -39,7 +41,13 @@ function formatSeconds(ms: number): string {
  * screenshot was taken. Call it from a `finally` block so timing is still recorded even when the
  * test fails partway through.
  */
-export function recordAndCheckTiming(testInfo: TestInfo, key: string, host: string, durationMs: number): void {
+export function recordAndCheckTiming(
+  testInfo: TestInfo,
+  key: string,
+  host: string,
+  durationMs: number,
+  appVersion?: string
+): void {
   const historyKey = `${key}@${host}`;
   const history = readHistory();
   const previous = history[historyKey];
@@ -63,6 +71,13 @@ export function recordAndCheckTiming(testInfo: TestInfo, key: string, host: stri
       testInfo.annotations.push({ type: 'timing-regression', description: warning });
       console.warn(`⚠ ${warning}`);
     }
+
+    if (appVersion && previous.appVersion && appVersion !== previous.appVersion) {
+      testInfo.annotations.push({
+        type: 'timing',
+        description: `${historyKey}: app version changed since last recorded run (${previous.appVersion} -> ${appVersion}) — a slowdown or visual diff here may just be a real app change, not an environment issue.`,
+      });
+    }
   } else {
     testInfo.annotations.push({
       type: 'timing',
@@ -70,6 +85,10 @@ export function recordAndCheckTiming(testInfo: TestInfo, key: string, host: stri
     });
   }
 
-  history[historyKey] = { durationMs, recordedAt: new Date().toISOString() };
+  history[historyKey] = {
+    durationMs,
+    recordedAt: new Date().toISOString(),
+    ...(appVersion ? { appVersion } : {}),
+  };
   fs.writeFileSync(HISTORY_PATH, JSON.stringify(history, null, 2) + '\n');
 }
