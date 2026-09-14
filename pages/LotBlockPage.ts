@@ -456,11 +456,18 @@ export class LotBlockPage extends BasePage {
     await expect(this.presetDetailsHeading).toBeHidden({ timeout: 10000 });
   }
 
-  /** The value cell for a given row label (e.g. "max allowed slope") in the preset details table. */
-  private presetDetailValue(label: string): Locator {
+  /**
+   * The value cell for a given row label (e.g. "max allowed slope") in the preset details table.
+   * `exact` matches the row's th text exactly (case-insensitive) instead of as a substring — use
+   * it when `label` would otherwise also match a longer row (e.g. "reference point" is itself a
+   * substring of "additional feet above reference point").
+   */
+  private presetDetailValue(label: string, exact = false): Locator {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const matcher = exact ? new RegExp(`^${escaped}$`, 'i') : label;
     return this.presetDetailsTable
       .locator('tr')
-      .filter({ has: this.page.locator('th', { hasText: label }) })
+      .filter({ has: this.page.locator('th', { hasText: matcher }) })
       .locator('td');
   }
 
@@ -476,9 +483,12 @@ export class LotBlockPage extends BasePage {
     await expect(this.presetDetailValue('do you want a fence?')).toHaveText('No');
   }
 
-  /** Verifies a single row's value in the currently open preset details table. */
-  async expectPresetDetailValue(label: string, expectedValue: string): Promise<void> {
-    await expect(this.presetDetailValue(label)).toHaveText(expectedValue);
+  /**
+   * Verifies a single row's value in the currently open preset details table. Pass `exact: true`
+   * when `label` would otherwise also match a longer row's text (see `presetDetailValue`).
+   */
+  async expectPresetDetailValue(label: string, expectedValue: string, exact = false): Promise<void> {
+    await expect(this.presetDetailValue(label, exact)).toHaveText(expectedValue);
   }
 
   /** Assigns `presetName` to the currently selected Group via the "Apply preset" dropdown. */
