@@ -203,7 +203,8 @@ cfb-automation/
 │   └── specs/                   .spec.ts files with the test cases
 │       ├── grading-settings.setup.ts                     Configures the Default Preset's grading options; runs once before every other test (see the "setup" project in playwright.config.ts)
 │       ├── lot-block-v2-group-inspection.spec.ts          Uploads every file in lotBlockFiles, grades it, and checks visual baselines (mesh off, then on)
-│       └── lot-block-v2-group-inspection.spec.ts-snapshots/   Visual regression baselines (tracked in git)
+│       ├── lot-block-v2-group-inspection.spec.ts-snapshots/   Visual regression baselines (tracked in git)
+│       └── lot-preset-custom-grading.spec.ts              Creates a custom Lot preset, assigns it per-Group/Zone/Pond, grades, and verifies every field applied
 │
 ├── utils/
 │   ├── downloadHelper.ts        Helpers to upload/download files
@@ -241,9 +242,12 @@ npm run test:debug    # Run in step-by-step debug mode
 ```bash
 npx playwright test tests/specs/grading-settings.setup.ts
 npx playwright test tests/specs/lot-block-v2-group-inspection.spec.ts
+npx playwright test tests/specs/lot-preset-custom-grading.spec.ts --no-deps
 ```
 
 > `grading-settings.setup.ts` belongs to the `setup` project and always runs once before the `chrome` project's tests (see [Test projects and setup](#test-projects-and-setup)), even if you don't name it explicitly. Running `npx playwright test tests/specs/lot-block-v2-group-inspection.spec.ts` on its own still runs it first.
+>
+> `lot-preset-custom-grading.spec.ts` manages its own preset from a clean slate and doesn't depend on the Default Preset's state, so it's normally run with `--no-deps` to skip `setup`.
 
 ### Running a single test by name
 
@@ -317,7 +321,7 @@ await page.fill('#password', admin.password);
 `playwright.config.ts` defines two projects:
 
 - **`setup`** — matches `tests/specs/*.setup.ts` (currently just `grading-settings.setup.ts`). It logs in, opens Settings → Grading settings → Lot presets → Default Preset, and makes sure `max_slope` is `6`, "Allow stem Walls?" and "Allow Retaining Walls?" are off, and "Do you want a fence?" is "No" — saving and reloading to confirm the values actually persisted before moving on.
-- **`chrome`** — the real spec suite (currently `lot-block-v2-group-inspection.spec.ts`). It declares `dependencies: ['setup']`, so Playwright always runs `setup` to completion first, even if you run `chrome` tests directly or filter with `-g`.
+- **`chrome`** — the real spec suite (`lot-block-v2-group-inspection.spec.ts`, `lot-preset-custom-grading.spec.ts`). It declares `dependencies: ['setup']`, so Playwright always runs `setup` to completion first, even if you run `chrome` tests directly or filter with `-g` — unless you pass `--no-deps`.
 
 This exists so every grading run in the suite starts from the same known preset configuration, regardless of what a previous manual session left in that environment.
 
@@ -360,11 +364,31 @@ The left panel tree mixes Groups, Zones, and Areas (which contain nested Groups/
 
 ---
 
+## Lot presets: custom preset creation and per-element grading
+
+`tests/specs/lot-preset-custom-grading.spec.ts` is a one-off test against Lake Louisa (the fastest file) that exercises the "Lot presets" feature end to end, independently of `grading-settings.setup.ts`'s Default Preset:
+
+1. Opens Settings → Grading settings → Lot presets and calls `ensureFreshPreset("QA Preset")` — deletes an existing "QA Preset" first (via its row's "..." menu → Delete → confirm) if one is already there from a previous run, then always creates it fresh via "Add Preset", so the test stays idempotent instead of accumulating duplicate presets in this shared environment.
+2. Edits only three things on the new preset: restricts "Optimization Priorities" to Lot Type A only, and turns "Allow stem Walls?", "Allow Retaining Walls?", and "Do you want a fence?" off.
+3. Calls `GradingSettingsPage.getFullPresetValues()` to snapshot **every** field on the preset — the three just edited, and whatever a freshly-created preset defaults to for the rest (Lot Setbacks, Drainage Lot Slopes, PAD & Finished Floor, Water Flow and Swale Options) — rather than hardcoding assumed default values.
+4. Saves, reloads, and calls `expectFullPresetValues()` with that same snapshot to confirm every field actually persisted server-side.
+5. Opens `lot-block-v2`, uploads the file, and walks every Group/Zone/Pond found by `LotBlockPage.listTreeItems()` (the set is dynamic — it depends on the file and how the grading engine splits it into Areas): each Group gets the custom preset assigned via the "Apply preset" dropdown, and each Zone/Pond gets the default Zone Constraint via "Apply constraints" — the per-element toolbar flow, not "Smoke'em All". Once every element in the Area is configured, the round per-Area "Submit" button unlocks; clicking it grades the whole Area at once.
+6. Opens the first **Group**'s "Solution summary" → "Presets used" → "View details" and checks every field from the step-3 snapshot against the corresponding row in that table, proving the preset that was actually applied during grading — edited fields and untouched defaults alike — matches what Settings showed.
+
+The preset is intentionally left in place afterward (not deleted) for manual inspection.
+
+Two real app quirks this test works around, in case they resurface elsewhere:
+
+- **Settings and `lot-block-v2` share one named popup window.** With the Settings tab still open, clicking `lot-block-v2` from the home tab just navigates that existing window to the new URL instead of opening a genuinely new tab — so `context.waitForEvent('page')` never fires. The test closes the Settings tab first.
+- **A Group/Zone container's own `[role="button"]` wrapper spans its entire card**, including any nested child Pond rows below it. Clicking that wrapper directly lands on whatever's at its bounding-box center — for a Zone with Ponds, that's a Pond row, not the Zone's own header. `LotBlockPage.clickTreeItem()` targets `[data-parent-zone="true"]` instead, which marks a container's own header content regardless of whether it has children.
+
+---
+
 ## How to add a new test
 
 1. If the test interacts with a new page, create a Page Object in `pages/` that extends `BasePage`.
 2. Create the test file in `tests/specs/` with a `.spec.ts` extension (or `.setup.ts` if it's a prerequisite that should run before the rest of the suite — see [Test projects and setup](#test-projects-and-setup)).
-3. Follow the pattern used in the existing specs (`grading-settings.setup.ts`, `lot-block-v2-group-inspection.spec.ts`): instantiate the Page Object(s), use `env` or `getUser()` for credentials, and assert with `expect`.
+3. Follow the pattern used in the existing specs (`grading-settings.setup.ts`, `lot-block-v2-group-inspection.spec.ts`, `lot-preset-custom-grading.spec.ts`): instantiate the Page Object(s), use `env` or `getUser()` for credentials, and assert with `expect`.
 4. Run `npx playwright test --list` to confirm Playwright detects the new file.
 
 ---
