@@ -19,6 +19,7 @@ const DEFAULT_PRESET_VALUES: FullPresetValues = {
   maxDrivewaySlope: 15,
   finishedFloorFeetAbove: 1,
   finishedFloorFoundationRise: 0.67,
+  referencePoint: 'highest-elevation',
   lotTypeAEnabled: true,
   lotTypeBEnabled: true,
   stemWallsEnabled: false,

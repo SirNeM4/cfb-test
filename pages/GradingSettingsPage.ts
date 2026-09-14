@@ -13,6 +13,7 @@ export interface FullPresetValues {
   maxDrivewaySlope: number;
   finishedFloorFeetAbove: number;
   finishedFloorFoundationRise: number;
+  referencePoint: 'highest-elevation' | 'road-center-line';
   lotTypeAEnabled: boolean;
   lotTypeBEnabled: boolean;
   stemWallsEnabled: boolean;
@@ -61,6 +62,14 @@ export class GradingSettingsPage extends BasePage {
   private readonly finishedFloorFoundationRiseInput: Locator = this.page.locator(
     '[id="finished_floor.0.foundation_rise"]'
   );
+  private readonly referencePointHighestRadio: Locator = this.page
+    .locator('[aria-labelledby="finished_floor.0.reference_point-label"] label', {
+      hasText: 'Highest Elevation Point of the Lot',
+    })
+    .locator('input[type="radio"]');
+  private readonly referencePointRoadCenterRadio: Locator = this.page
+    .locator('[aria-labelledby="finished_floor.0.reference_point-label"] label', { hasText: 'Road Center line' })
+    .locator('input[type="radio"]');
   // Water Flow and Swale Options
   private readonly rearYardDrainageToggle: Locator = this.page.locator('#allow_rear_yard_drainage');
   private readonly waterCrossingToggle: Locator = this.page.locator('#allow_water_crossing_lot_line');
@@ -222,6 +231,13 @@ export class GradingSettingsPage extends BasePage {
     await this.setNumericField(this.maxDrivewaySlopeInput, values.maxDrivewaySlope);
     await this.setNumericField(this.finishedFloorFeetAboveInput, values.finishedFloorFeetAbove);
     await this.setNumericField(this.finishedFloorFoundationRiseInput, values.finishedFloorFoundationRise);
+    const referencePointRadio =
+      values.referencePoint === 'highest-elevation'
+        ? this.referencePointHighestRadio
+        : this.referencePointRoadCenterRadio;
+    if (!(await referencePointRadio.isChecked())) {
+      await referencePointRadio.check();
+    }
     values.lotTypeAEnabled
       ? await this.ensureToggleOn(this.lotTypeAToggle)
       : await this.ensureToggleOff(this.lotTypeAToggle);
@@ -352,6 +368,9 @@ export class GradingSettingsPage extends BasePage {
       maxDrivewaySlope: Number(await this.maxDrivewaySlopeInput.inputValue()),
       finishedFloorFeetAbove: Number(await this.finishedFloorFeetAboveInput.inputValue()),
       finishedFloorFoundationRise: Number(await this.finishedFloorFoundationRiseInput.inputValue()),
+      referencePoint: (await this.referencePointHighestRadio.isChecked())
+        ? 'highest-elevation'
+        : 'road-center-line',
       lotTypeAEnabled: await isChecked(this.lotTypeAToggle),
       lotTypeBEnabled: await isChecked(this.lotTypeBToggle),
       stemWallsEnabled: await isChecked(this.stemWallsToggle),
@@ -380,6 +399,11 @@ export class GradingSettingsPage extends BasePage {
     await expect(this.maxDrivewaySlopeInput).toHaveValue(String(expected.maxDrivewaySlope));
     await expect(this.finishedFloorFeetAboveInput).toHaveValue(String(expected.finishedFloorFeetAbove));
     await expect(this.finishedFloorFoundationRiseInput).toHaveValue(String(expected.finishedFloorFoundationRise));
+    await expect(
+      expected.referencePoint === 'highest-elevation'
+        ? this.referencePointHighestRadio
+        : this.referencePointRoadCenterRadio
+    ).toBeChecked();
     await expect(this.lotTypeAToggle).toHaveAttribute('aria-checked', String(expected.lotTypeAEnabled));
     await expect(this.lotTypeBToggle).toHaveAttribute('aria-checked', String(expected.lotTypeBEnabled));
     await expect(this.stemWallsToggle).toHaveAttribute('aria-checked', String(expected.stemWallsEnabled));

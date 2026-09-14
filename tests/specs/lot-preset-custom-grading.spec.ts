@@ -147,6 +147,11 @@ test('custom Lot preset is created, edited, assigned per-Group, and applied duri
   );
   await lotBlockPage.expectPresetDetailValue('pad elevation', `${presetValues.finishedFloorFoundationRise} ft`);
   await lotBlockPage.expectPresetDetailValue(
+    'reference point',
+    presetValues.referencePoint === 'highest-elevation' ? 'Highest Elevation Point of the Lot' : 'Road Center line',
+    true
+  );
+  await lotBlockPage.expectPresetDetailValue(
     'allow rear yard drainage?',
     presetValues.rearYardDrainage ? 'Yes' : 'No'
   );
