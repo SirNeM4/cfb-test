@@ -191,9 +191,60 @@ export class GradingSettingsPage extends BasePage {
     await field.blur();
   }
 
-  /** Sets "Max slope" to the given percentage, only touching the field if it differs. */
-  async setMaxSlope(value: number): Promise<void> {
-    await this.setNumericField(this.maxSlopeInput, value);
+  private async ensureSwalePosition(onButton: Locator, offButton: Locator, position: 'on' | 'off'): Promise<void> {
+    const target = position === 'on' ? onButton : offButton;
+    const other = position === 'on' ? offButton : onButton;
+    if (GradingSettingsPage.SELECTED_SWALE_CLASS.test((await target.getAttribute('class')) ?? '')) {
+      return;
+    }
+    await target.click();
+    // The "selected" ring moves from one button to the other, but not necessarily in the same
+    // instant — wait for BOTH sides of that swap so a caller reading the value back right after
+    // never catches an in-between state where both buttons still look selected.
+    await expect(target).toHaveClass(GradingSettingsPage.SELECTED_SWALE_CLASS);
+    await expect(other).not.toHaveClass(GradingSettingsPage.SELECTED_SWALE_CLASS);
+  }
+
+  /**
+   * Sets every field on the currently-open preset to match `values` (e.g. a snapshot captured
+   * earlier via `getFullPresetValues`), only touching a field if it actually differs. Used to pin
+   * a preset — typically the shared "Default Preset" — to a known, fixed configuration so grading
+   * results stop drifting between runs based on whatever that preset happened to have.
+   */
+  async setFullPresetValues(values: FullPresetValues): Promise<void> {
+    await this.setNumericField(this.frontSetbackInput, values.frontSetback);
+    await this.setNumericField(this.sideSetbackInput, values.sideSetback);
+    await this.setNumericField(this.rearSetbackInput, values.rearSetback);
+    await this.setNumericField(this.rearSetbackMaxSlopeInput, values.rearSetbackMaxSlope);
+    await this.setNumericField(this.sideSetbackMaxSlopeInput, values.sideSetbackMaxSlope);
+    await this.setNumericField(this.minSlopeInput, values.minSlope);
+    await this.setNumericField(this.maxSlopeInput, values.maxSlope);
+    await this.setNumericField(this.maxDrivewaySlopeInput, values.maxDrivewaySlope);
+    await this.setNumericField(this.finishedFloorFeetAboveInput, values.finishedFloorFeetAbove);
+    await this.setNumericField(this.finishedFloorFoundationRiseInput, values.finishedFloorFoundationRise);
+    values.lotTypeAEnabled
+      ? await this.ensureToggleOn(this.lotTypeAToggle)
+      : await this.ensureToggleOff(this.lotTypeAToggle);
+    values.lotTypeBEnabled
+      ? await this.ensureToggleOn(this.lotTypeBToggle)
+      : await this.ensureToggleOff(this.lotTypeBToggle);
+    values.stemWallsEnabled ? await this.ensureToggleOn(this.stemWallsToggle) : await this.ensureStemWallsOff();
+    values.retainingWallsEnabled
+      ? await this.ensureToggleOn(this.retainingWallsToggle)
+      : await this.ensureRetainingWallsOff();
+    if (values.fence === 'No') {
+      await this.ensureFenceNo();
+    } else if (!(await this.fenceYesRadio.isChecked())) {
+      await this.fenceYesRadio.check();
+    }
+    values.rearYardDrainage
+      ? await this.ensureToggleOn(this.rearYardDrainageToggle)
+      : await this.ensureToggleOff(this.rearYardDrainageToggle);
+    values.waterCrossing
+      ? await this.ensureToggleOn(this.waterCrossingToggle)
+      : await this.ensureToggleOff(this.waterCrossingToggle);
+    await this.ensureSwalePosition(this.sideYardSwaleOnButton, this.sideYardSwaleOffButton, values.sideYardSwale);
+    await this.ensureSwalePosition(this.rearYardSwaleOnButton, this.rearYardSwaleOffButton, values.rearYardSwale);
   }
 
   private async ensureToggleOff(toggle: Locator): Promise<void> {
@@ -277,18 +328,6 @@ export class GradingSettingsPage extends BasePage {
       // Give any delayed "still dirty" re-flagging a moment to surface before declaring victory.
       await this.page.waitForTimeout(1000);
     }
-  }
-
-  /**
-   * Confirms the values just saved actually stuck: re-opens the Default Preset (the caller
-   * should navigate back to Lot presets and call this after a page reload, so the fields reflect
-   * what the backend has, not just leftover client-side state) and checks each field.
-   */
-  async expectDefaultsPersisted(): Promise<void> {
-    await expect(this.maxSlopeInput).toHaveValue('6');
-    await expect(this.stemWallsToggle).toHaveAttribute('aria-checked', 'false');
-    await expect(this.retainingWallsToggle).toHaveAttribute('aria-checked', 'false');
-    await expect(this.fenceNoRadio).toBeChecked();
   }
 
   /**
