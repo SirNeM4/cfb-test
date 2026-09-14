@@ -1,0 +1,26 @@
+{
+  "lake-louisa@app-dev.drtwrk.io": {
+    "durationMs": 111900,
+    "recordedAt": "2026-09-14T23:16:18.220Z"
+  },
+  "coleman-ridge@app-dev.drtwrk.io": {
+    "durationMs": 396653,
+    "recordedAt": "2026-09-14T23:21:02.892Z"
+  },
+  "goose-creek@app-dev.drtwrk.io": {
+    "durationMs": 549600,
+    "recordedAt": "2026-09-14T23:23:35.919Z"
+  },
+  "lake-louisa@app-staging.drtwrk.io": {
+    "durationMs": 98701,
+    "recordedAt": "2026-09-14T23:08:32.903Z"
+  },
+  "goose-creek@app-staging.drtwrk.io": {
+    "durationMs": 288988,
+    "recordedAt": "2026-09-14T23:11:43.181Z"
+  },
+  "coleman-ridge@app-staging.drtwrk.io": {
+    "durationMs": 346412,
+    "recordedAt": "2026-09-14T23:12:40.512Z"
+  }
+}
