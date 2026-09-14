@@ -89,6 +89,12 @@ export class GradingSettingsPage extends BasePage {
     .locator('[aria-labelledby="rear_yard_swale_position-label"]')
     .locator('button')
     .filter({ has: this.page.locator('img[alt="Swales placed OFF lot line"]') });
+  /**
+   * Matches the "selected" ring class ("border-primary") on a swale option button, but not the
+   * unrelated "hover:border-primary/50" hover utility that's present on BOTH buttons regardless
+   * of selection — a plain `/border-primary/` match would wrongly hit that substring too.
+   */
+  private static readonly SELECTED_SWALE_CLASS = /(?<!:)\bborder-primary\b(?!\/)/;
 
   constructor(page: Page) {
     super(page);
@@ -290,13 +296,6 @@ export class GradingSettingsPage extends BasePage {
     await this.ensureToggleOff(this.stemWallsToggle);
   }
 
-  /** Ensures the PAD & Finished Floor reference point is "Highest Elevation Point of the Lot". */
-  async ensureReferencePointHighestElevation(): Promise<void> {
-    if (!(await this.referencePointHighestRadio.isChecked())) {
-      await this.referencePointHighestRadio.check();
-    }
-  }
-
   /** Ensures the "Allow Retaining Walls?" priority toggle is off. */
   async ensureRetainingWallsOff(): Promise<void> {
     await this.ensureToggleOff(this.retainingWallsToggle);
@@ -309,12 +308,12 @@ export class GradingSettingsPage extends BasePage {
     }
   }
 
-  /**
-   * Matches the "selected" ring class ("border-primary") on a swale option button, but not the
-   * unrelated "hover:border-primary/50" hover utility that's present on BOTH buttons regardless
-   * of selection — a plain `/border-primary/` match would wrongly hit that substring too.
-   */
-  private static readonly SELECTED_SWALE_CLASS = /(?<!:)\bborder-primary\b(?!\/)/;
+  /** Ensures the PAD & Finished Floor reference point is "Highest Elevation Point of the Lot". */
+  async ensureReferencePointHighestElevation(): Promise<void> {
+    if (!(await this.referencePointHighestRadio.isChecked())) {
+      await this.referencePointHighestRadio.check();
+    }
+  }
 
   /** The selected swale option is styled with a "border-primary" ring; the other isn't. */
   private async expectSwaleSelected(onButton: Locator, offButton: Locator, position: 'on' | 'off'): Promise<void> {
