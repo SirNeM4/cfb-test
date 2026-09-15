@@ -73,32 +73,38 @@ async function recognizeText(imagePath: string): Promise<string> {
   }
 }
 
+export type LotType = 'A' | 'B' | 'C';
+const ALL_LOT_TYPES: LotType[] = ['A', 'B', 'C'];
+
 /**
- * True if the recognized lot-label text contains a Type B or C marker anywhere — i.e. some lot on
- * screen was graded as (or including) a type other than A. Deliberately doesn't try to parse which
+ * True if the recognized lot-label text contains a marker for any type OTHER than
+ * `allowedType` — i.e. some lot on screen was graded as (or including) a type a preset
+ * restricted to just `allowedType` should never produce. Deliberately doesn't try to parse which
  * lot each letter belongs to, or reconstruct multi-type labels like "A/B": OCR's own read of the
  * "/" separator is unreliable (frequently misread as "l"/"I"/"1"), but since "LotN" and "FF: ..."
- * never contain the letters A, B, or C, any B/C found in this pre-isolated text can only have come
- * from a type label — so a plain substring check on the recognized text is enough to catch it.
+ * never contain the letters A, B, or C, any disallowed letter found in this pre-isolated text can
+ * only have come from a type label — so a plain substring check on the recognized text is enough
+ * to catch it.
  */
-export function containsNonTypeALetter(recognizedText: string): boolean {
-  return /[BC]/.test(recognizedText);
+export function containsDisallowedTypeLetter(recognizedText: string, allowedType: LotType): boolean {
+  return ALL_LOT_TYPES.filter((t) => t !== allowedType).some((t) => recognizedText.includes(t));
 }
 
 /**
  * Full pipeline: isolate the lot-label text in `screenshotPath`, OCR it, and report whether
- * anything other than Type A was found. `debugPrefix`, when given, keeps the intermediate
+ * anything other than `allowedType` was found. `debugPrefix`, when given, keeps the intermediate
  * (isolated/upscaled) image next to the original for manual inspection instead of discarding it.
  */
-export async function checkScreenshotForNonTypeALots(
+export async function checkScreenshotForDisallowedLotTypes(
   screenshotPath: string,
+  allowedType: LotType,
   debugPrefix?: string
 ): Promise<{ recognizedText: string; hasViolation: boolean }> {
   const isolatedPath = debugPrefix ? `${debugPrefix}-isolated.png` : `${screenshotPath}.isolated.png`;
   isolateLotLabelText(screenshotPath, isolatedPath);
   try {
     const recognizedText = await recognizeText(isolatedPath);
-    return { recognizedText, hasViolation: containsNonTypeALetter(recognizedText) };
+    return { recognizedText, hasViolation: containsDisallowedTypeLetter(recognizedText, allowedType) };
   } finally {
     if (!debugPrefix) fs.unlinkSync(isolatedPath);
   }

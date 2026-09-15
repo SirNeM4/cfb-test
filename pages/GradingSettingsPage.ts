@@ -304,6 +304,14 @@ export class GradingSettingsPage extends BasePage {
     // risk clicking a toggle that isn't meant to be interactive.
   }
 
+  /** Ensures only Lot Type B is enabled under "Optimization Priorities" (A off, C left alone). */
+  async ensureOnlyLotTypeBEnabled(): Promise<void> {
+    await this.ensureToggleOff(this.lotTypeAToggle);
+    await this.ensureToggleOn(this.lotTypeBToggle);
+    // Lot Type C renders disabled/grayed out in this environment — leave it alone rather than
+    // risk clicking a toggle that isn't meant to be interactive.
+  }
+
   /** Ensures the "Allow stem Walls?" priority toggle is off. */
   async ensureStemWallsOff(): Promise<void> {
     await this.ensureToggleOff(this.stemWallsToggle);
