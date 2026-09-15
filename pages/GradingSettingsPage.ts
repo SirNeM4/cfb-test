@@ -193,6 +193,19 @@ export class GradingSettingsPage extends BasePage {
     await expect(this.presetButtonByName(name)).toBeVisible();
   }
 
+  /**
+   * Creates `name` only if it doesn't already exist — unlike `ensureFreshPreset`, never deletes an
+   * existing preset with that name. Use this when multiple parallel workers might touch the same
+   * account-wide preset: a delete+recreate from one worker can invalidate another worker's
+   * already-made assignment to it, but reusing whatever's already there is always safe.
+   */
+  async ensurePresetExists(name: string, description = ''): Promise<void> {
+    if (await this.presetExists(name)) return;
+    await this.openAddPresetModal();
+    await this.createPreset(name, description);
+    await expect(this.presetButtonByName(name)).toBeVisible();
+  }
+
   private async setNumericField(field: Locator, value: number): Promise<void> {
     const current = await field.inputValue();
     if (current === String(value)) {
