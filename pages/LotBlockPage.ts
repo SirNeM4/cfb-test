@@ -34,6 +34,9 @@ export class LotBlockPage extends BasePage {
   private readonly presetDetailsTable: Locator = this.page
     .locator('table')
     .filter({ hasText: 'Preset Settings / Lots' });
+  // "Preset Issues" table: LOT TYPE / LOT / STATUS / ZOOM, listing only mismatches — a Type-A-only
+  // preset should leave this empty for every Group it was assigned to.
+  private readonly presetIssuesTable: Locator = this.page.locator('table').filter({ hasText: 'LOT TYPE' });
   private readonly presetDetailsCloseButton: Locator = this.page
     .locator('h3', { has: this.page.getByText('From grading solution') })
     .locator('xpath=following-sibling::button');
@@ -254,6 +257,53 @@ export class LotBlockPage extends BasePage {
   }
 
   /**
+   * Screenshots just the map canvas at `zoomPercent`, with every known UI overlay (toolbar,
+   * solutions panel, zoom controls, top-right icon cluster, right icon rail) hidden first — used
+   * for pixel/OCR-based checks (see utils/lotTypeOcr.ts) where button/panel text would otherwise
+   * read as noise. The canvas spans the full viewport underneath these overlays, so hiding them is
+   * the only way to exclude them from an element screenshot. Visibility is restored immediately
+   * after: the hidden "Back" button in particular is needed by normal navigation afterward (e.g.
+   * `clickViewAll()` expects to be able to leave the solution view first), so leaving it hidden
+   * silently breaks whatever the test does next.
+   */
+  async captureCleanMapScreenshot(zoomPercent: number, screenshotPath: string): Promise<void> {
+    await this.setMinimapSizeTo(zoomPercent);
+    await this.moveMouseAway();
+    await this.setMapChromeVisibility('hidden');
+    await this.page.waitForTimeout(500);
+
+    try {
+      await this.canvas.screenshot({ path: screenshotPath });
+    } finally {
+      await this.setMapChromeVisibility('');
+    }
+  }
+
+  /** Toggles every known UI overlay drawn on top of the map canvas — see `captureCleanMapScreenshot`. */
+  private async setMapChromeVisibility(visibility: 'hidden' | ''): Promise<void> {
+    await this.page.evaluate((value) => {
+      const findPanelFor = (matchText: string, tag = 'button') => {
+        const el = Array.from(document.querySelectorAll(tag)).find((b) => b.textContent?.trim() === matchText);
+        return (el?.closest('div.pointer-events-auto') as HTMLElement | null) ?? (el as HTMLElement | null);
+      };
+      const elements = [
+        findPanelFor('Back'),
+        findPanelFor('Add solution'),
+        findPanelFor('-'),
+        findPanelFor('Help'),
+        // Right icon rail: the vertical stack of icon-only buttons along the far right edge.
+        ...Array.from(document.querySelectorAll('div')).filter((d) => {
+          const rect = d.getBoundingClientRect();
+          return rect.x > 1200 && rect.width < 80 && rect.height > 100 && rect.height < 400;
+        }),
+      ].filter((el): el is HTMLElement => el != null);
+      elements.forEach((el) => {
+        el.style.visibility = value;
+      });
+    }, visibility);
+  }
+
+  /**
    * Right-clicks the canvas center and, holding the button down, drags the mouse through a
    * sequence of waypoints (each `{dx, dy}` offset from the previous point) — used to orbit the 3D
    * camera the way a real drag with several changes of direction would. Leaves the mouse button
@@ -454,6 +504,22 @@ export class LotBlockPage extends BasePage {
   async closePresetDetails(): Promise<void> {
     await this.presetDetailsCloseButton.click({ timeout: 15000 });
     await expect(this.presetDetailsHeading).toBeHidden({ timeout: 10000 });
+  }
+
+  /**
+   * Reads the "Preset Issues" table (Lot Type / Lot / Status) for whichever Group/Zone/Pond is
+   * currently selected in the Solution summary panel. Empty when there are no mismatches, or when
+   * the selected element has no such section at all (e.g. a Zone/Pond graded with a constraint
+   * rather than a Lot preset).
+   */
+  async getPresetIssues(): Promise<{ lotType: string; lot: string; status: string }[]> {
+    const rows = await this.presetIssuesTable.locator('tbody tr').all();
+    const issues: { lotType: string; lot: string; status: string }[] = [];
+    for (const row of rows) {
+      const [lotType, lot, status] = await row.locator('td').allTextContents();
+      issues.push({ lotType: lotType?.trim() ?? '', lot: lot?.trim() ?? '', status: status?.trim() ?? '' });
+    }
+    return issues;
   }
 
   /**
