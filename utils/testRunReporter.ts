@@ -157,9 +157,16 @@ export default class TestRunReporter implements Reporter {
     return { label: `${pct} (about the same)`, cssClass: 'neutral' };
   }
 
+  private isFailure(record: TestRecord): boolean {
+    return record.status !== 'passed' && record.status !== 'skipped';
+  }
+
   private buildHtml(): string {
     const passed = this.records.filter((r) => r.status === 'passed').length;
-    const failed = this.records.filter((r) => r.status !== 'passed' && r.status !== 'skipped').length;
+    const failedRecords = this.records
+      .map((record, index) => ({ record, index }))
+      .filter(({ record }) => this.isFailure(record));
+    const failed = failedRecords.length;
     const skipped = this.records.filter((r) => r.status === 'skipped').length;
     const hosts = [...new Set(this.records.map((r) => r.timing?.host).filter(Boolean))];
     const versions = [...new Set(this.records.map((r) => this.recordVersion(r)).filter(Boolean))];
@@ -172,12 +179,15 @@ export default class TestRunReporter implements Reporter {
 <style>
   body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; background: #0f1115; color: #e6e6e6; margin: 0; padding: 24px; }
   h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 28px 0 10px; }
+  a { color: #93c5fd; }
   .meta { color: #9aa0a6; margin-bottom: 20px; font-size: 13px; line-height: 1.6; }
   .summary span { margin-right: 16px; }
   table { border-collapse: collapse; width: 100%; }
   th, td { border: 1px solid #2a2d34; padding: 8px 10px; text-align: left; font-size: 13px; vertical-align: top; }
   th { background: #1a1d23; position: sticky; top: 0; }
   tr:nth-child(even) { background: #14161b; }
+  tr:target { outline: 2px solid #f87171; outline-offset: -2px; }
   .status-passed { color: #4ade80; font-weight: 600; }
   .status-failed, .status-timedOut, .status-interrupted { color: #f87171; font-weight: 600; }
   .status-skipped { color: #9aa0a6; font-weight: 600; }
@@ -214,6 +224,21 @@ export default class TestRunReporter implements Reporter {
       <span class="status-skipped">${skipped} skipped</span>
     </div>
   </div>
+  <h2>All tests</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>File</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${this.records.map((r, i) => this.buildSummaryRowHtml(r, i)).join('\n')}
+    </tbody>
+  </table>
+  ${
+    failedRecords.length > 0
+      ? `<h2>Failed tests</h2>
   <table>
     <thead>
       <tr>
@@ -226,9 +251,11 @@ export default class TestRunReporter implements Reporter {
       </tr>
     </thead>
     <tbody>
-      ${this.records.map((r) => this.buildRowHtml(r)).join('\n')}
+      ${failedRecords.map(({ record, index }) => this.buildDetailRowHtml(record, index)).join('\n')}
     </tbody>
-  </table>
+  </table>`
+      : ''
+  }
   <script>
     (function () {
       var lightbox = document.getElementById('lightbox');
@@ -251,7 +278,19 @@ export default class TestRunReporter implements Reporter {
 </html>`;
   }
 
-  private buildRowHtml(record: TestRecord): string {
+  /** Row in the top "All tests" table — just enough to see what ran and whether it passed. Failed
+   *  tests' names link down to their full write-up in the "Failed tests" table. */
+  private buildSummaryRowHtml(record: TestRecord, index: number): string {
+    const fileLabel = `${escapeHtml(record.specFile)}<span class="title">${escapeHtml(record.title)}</span>`;
+    const fileCell = this.isFailure(record) ? `<a href="#test-${index}">${fileLabel}</a>` : fileLabel;
+    return `<tr>
+      <td>${fileCell}</td>
+      <td class="status-${record.status}">${record.status.toUpperCase()}</td>
+    </tr>`;
+  }
+
+  /** Row in the "Failed tests" table — full detail: duration comparison, error, and any diff/failure images. */
+  private buildDetailRowHtml(record: TestRecord, index: number): string {
     const verdict = this.durationVerdict(record.timing);
     const durationSec = (record.durationMs / 1000).toFixed(1);
     const previousSec =
@@ -268,7 +307,7 @@ export default class TestRunReporter implements Reporter {
           .join('')}</div>`
       : '';
 
-    return `<tr>
+    return `<tr id="test-${index}">
       <td>${escapeHtml(record.specFile)}<span class="title">${escapeHtml(record.title)} &middot; project: ${escapeHtml(record.project)}</span></td>
       <td class="status-${record.status}">${record.status.toUpperCase()}</td>
       <td>${durationSec}s</td>
