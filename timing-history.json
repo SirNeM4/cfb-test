@@ -29,6 +29,26 @@
       "durationMs": 111740,
       "recordedAt": "2026-09-15T17:17:33.052Z",
       "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 108099,
+      "recordedAt": "2026-09-15T18:02:19.874Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 106849,
+      "recordedAt": "2026-09-15T18:12:11.891Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 112175,
+      "recordedAt": "2026-09-15T18:14:58.606Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 109227,
+      "recordedAt": "2026-09-15T18:27:05.521Z",
+      "appVersion": "Source: Development · v0.74.110"
     }
   ],
   "coleman-ridge@app-dev.drtwrk.io": [
@@ -61,6 +81,21 @@
       "durationMs": 409768,
       "recordedAt": "2026-09-15T17:22:30.993Z",
       "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 407445,
+      "recordedAt": "2026-09-15T18:07:19.249Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 428637,
+      "recordedAt": "2026-09-15T18:20:15.067Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 435476,
+      "recordedAt": "2026-09-15T18:32:31.883Z",
+      "appVersion": "Source: Development · v0.74.110"
     }
   ],
   "goose-creek@app-dev.drtwrk.io": [
@@ -92,6 +127,21 @@
     {
       "durationMs": 533602,
       "recordedAt": "2026-09-15T17:24:34.911Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 515997,
+      "recordedAt": "2026-09-15T18:09:07.667Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 590015,
+      "recordedAt": "2026-09-15T18:22:56.412Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 573213,
+      "recordedAt": "2026-09-15T18:34:49.621Z",
       "appVersion": "Source: Development · v0.74.110"
     }
   ],
