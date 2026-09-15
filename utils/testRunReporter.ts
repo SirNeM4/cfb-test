@@ -37,6 +37,8 @@ interface TestRecord {
   /** Playwright's own full-page screenshot(s) at the point of failure (`screenshot: 'only-on-failure'`). */
   failureScreenshots: string[];
   timing?: TimingData;
+  /** From the 'app-version' annotation utils/appVersion.ts pushes right after login on every test. */
+  appVersion?: string;
   notes: string[];
 }
 
@@ -74,6 +76,7 @@ export default class TestRunReporter implements Reporter {
 
   onTestEnd(test: TestCase, result: TestResult): void {
     let timing: TimingData | undefined;
+    let appVersion: string | undefined;
     const notes: string[] = [];
 
     for (const annotation of result.annotations) {
@@ -83,6 +86,8 @@ export default class TestRunReporter implements Reporter {
         } catch {
           // Malformed — skip rather than crash the whole report.
         }
+      } else if (annotation.type === 'app-version' && annotation.description) {
+        appVersion = annotation.description;
       } else if (annotation.type === 'timing-regression' || annotation.type === 'visual-baseline') {
         if (annotation.description) notes.push(annotation.description);
       }
@@ -100,6 +105,7 @@ export default class TestRunReporter implements Reporter {
         .filter((a) => a.name === 'screenshot' && a.path && a.contentType === 'image/png')
         .map((a) => a.path as string),
       timing,
+      appVersion,
       notes,
     });
   }
@@ -129,9 +135,13 @@ export default class TestRunReporter implements Reporter {
     console.log(`\nTest run report: ${filePath}`);
   }
 
+  private recordVersion(record: TestRecord): string | undefined {
+    return record.appVersion ?? record.timing?.appVersion;
+  }
+
   /** e.g. "Source: Development · v0.74.110" -> "development-v0.74.110". */
   private reportVersionSlug(): string {
-    const versioned = this.records.find((r) => r.timing?.appVersion)?.timing?.appVersion;
+    const versioned = this.records.map((r) => this.recordVersion(r)).find(Boolean);
     const match = versioned?.match(/Source:\s*([A-Za-z]+).*?v?([\d.]+)/i);
     return match ? `${match[1].toLowerCase()}-v${match[2]}` : 'unknown-version';
   }
@@ -152,7 +162,7 @@ export default class TestRunReporter implements Reporter {
     const failed = this.records.filter((r) => r.status !== 'passed' && r.status !== 'skipped').length;
     const skipped = this.records.filter((r) => r.status === 'skipped').length;
     const hosts = [...new Set(this.records.map((r) => r.timing?.host).filter(Boolean))];
-    const versions = [...new Set(this.records.map((r) => r.timing?.appVersion).filter(Boolean))];
+    const versions = [...new Set(this.records.map((r) => this.recordVersion(r)).filter(Boolean))];
 
     return `<!doctype html>
 <html>
@@ -177,15 +187,19 @@ export default class TestRunReporter implements Reporter {
   .title { color: #9aa0a6; font-size: 11px; display: block; margin-top: 2px; }
   .images { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
   .images figure { margin: 0; width: 260px; }
-  .images img { width: 100%; border: 1px solid #2a2d34; border-radius: 4px; display: block; }
+  .images img { width: 100%; border: 1px solid #2a2d34; border-radius: 4px; display: block; cursor: zoom-in; }
   .images figcaption { font-size: 11px; color: #9aa0a6; margin-top: 4px; }
   .diff-block { margin-top: 10px; padding: 10px; background: #14161b; border-radius: 6px; }
   .diff-name { font-size: 12px; color: #d1d5db; }
   .error { white-space: pre-wrap; color: #f87171; font-size: 12px; background: #1a1214; padding: 8px; border-radius: 4px; margin-top: 6px; max-height: 200px; overflow: auto; }
   .note { font-size: 12px; color: #facc15; margin-top: 6px; }
+  #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 1000; align-items: center; justify-content: center; cursor: zoom-out; padding: 24px; box-sizing: border-box; }
+  #lightbox.open { display: flex; }
+  #lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 0 24px rgba(0,0,0,0.6); }
 </style>
 </head>
 <body>
+  <div id="lightbox"><img id="lightbox-img" src="" alt=""></div>
   <h1>Playwright test run report</h1>
   <div class="meta">
     <div class="summary">
@@ -215,6 +229,24 @@ export default class TestRunReporter implements Reporter {
       ${this.records.map((r) => this.buildRowHtml(r)).join('\n')}
     </tbody>
   </table>
+  <script>
+    (function () {
+      var lightbox = document.getElementById('lightbox');
+      var lightboxImg = document.getElementById('lightbox-img');
+      document.addEventListener('click', function (event) {
+        var target = event.target;
+        if (target && target.tagName === 'IMG' && target.closest('.images')) {
+          lightboxImg.src = target.src;
+          lightbox.classList.add('open');
+        } else if (target === lightbox) {
+          lightbox.classList.remove('open');
+        }
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') lightbox.classList.remove('open');
+      });
+    })();
+  </script>
 </body>
 </html>`;
   }
@@ -241,7 +273,7 @@ export default class TestRunReporter implements Reporter {
       <td class="status-${record.status}">${record.status.toUpperCase()}</td>
       <td>${durationSec}s</td>
       <td class="${verdict.cssClass}">${verdict.label}${previousSec !== null ? ` <span class="title" style="display:inline">(prev ${previousSec}s)</span>` : ''}</td>
-      <td>${escapeHtml(record.timing?.appVersion ?? '-')}</td>
+      <td>${escapeHtml(this.recordVersion(record) ?? '-')}</td>
       <td>${errorHtml}${notesHtml}${imagesHtml}${failureScreenshotsHtml}</td>
     </tr>`;
   }

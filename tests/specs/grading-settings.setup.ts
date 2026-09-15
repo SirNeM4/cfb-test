@@ -3,6 +3,7 @@ import { LoginPage } from '../../pages/LoginPage';
 import { HomePage } from '../../pages/HomePage';
 import { GradingSettingsPage, FullPresetValues } from '../../pages/GradingSettingsPage';
 import { env } from '../../config/env';
+import { recordAppVersion } from '../../utils/appVersion';
 
 // "Default Preset" is shared across the whole account, so leaving any of its fields to whatever a
 // previous manual session set them to makes grading (and its visual regression baselines) drift
@@ -33,7 +34,7 @@ const DEFAULT_PRESET_VALUES: FullPresetValues = {
 
 // Runs once, before the "chrome" project (see the `dependencies` wiring in playwright.config.ts),
 // to make sure the Default Preset's grading options are in the expected state for every spec.
-test('grading defaults are configured', async ({ page, context }) => {
+test('grading defaults are configured', async ({ page, context }, testInfo) => {
   test.setTimeout(120000);
 
   const loginPage = new LoginPage(page);
@@ -42,6 +43,7 @@ test('grading defaults are configured', async ({ page, context }) => {
   await loginPage.open();
   await loginPage.login(env.defaultUser.username, env.defaultUser.password);
   await loginPage.expectLoggedIn();
+  await recordAppVersion(testInfo, page);
 
   // The "settings" link opens a new tab, just like "lot-block-v2".
   const [settingsTab] = await Promise.all([context.waitForEvent('page'), homePage.clickSettings()]);

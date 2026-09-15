@@ -4,6 +4,7 @@ import { HomePage } from '../../pages/HomePage';
 import { GradingSettingsPage } from '../../pages/GradingSettingsPage';
 import { LotBlockPage } from '../../pages/LotBlockPage';
 import { env } from '../../config/env';
+import { recordAppVersion } from '../../utils/appVersion';
 
 // One-off (Lake Louisa only, the fastest file — see [[feedback_new_test_workflow]]): creates a
 // custom Lot preset (deleting a stale one from a previous run first, so this stays idempotent
@@ -25,7 +26,7 @@ const PRESET_NAME = 'QA Preset';
 test('custom Lot preset is created, edited, assigned per-Group, and applied during grading', async ({
   page,
   context,
-}) => {
+}, testInfo) => {
   test.setTimeout(600000);
 
   const loginPage = new LoginPage(page);
@@ -34,6 +35,7 @@ test('custom Lot preset is created, edited, assigned per-Group, and applied duri
   await loginPage.open();
   await loginPage.login(env.defaultUser.username, env.defaultUser.password);
   await loginPage.expectLoggedIn();
+  await recordAppVersion(testInfo, page);
 
   // --- Settings: create/edit the custom Lot preset, from a clean slate ---
   const [settingsTab] = await Promise.all([
