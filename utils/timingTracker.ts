@@ -8,6 +8,9 @@ const HISTORY_PATH = path.resolve(__dirname, '..', 'timing-history.json');
 // a real slowdown worth flagging, not just normal network/server variance.
 const SIGNIFICANT_INCREASE_RATIO = 0.3;
 
+// Keep enough history to see a trend per file+environment without the file growing forever.
+const MAX_ENTRIES_PER_KEY = 10;
+
 interface TimingEntry {
   durationMs: number;
   recordedAt: string;
@@ -15,14 +18,22 @@ interface TimingEntry {
   appVersion?: string;
 }
 
-type TimingHistory = Record<string, TimingEntry>;
+type TimingHistory = Record<string, TimingEntry[]>;
 
 function readHistory(): TimingHistory {
+  let raw: Record<string, unknown>;
   try {
-    return JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf-8'));
+    raw = JSON.parse(fs.readFileSync(HISTORY_PATH, 'utf-8'));
   } catch {
     return {};
   }
+
+  // Migrate the old format (a single most-recent entry per key) to a list of entries.
+  const history: TimingHistory = {};
+  for (const [key, value] of Object.entries(raw)) {
+    history[key] = Array.isArray(value) ? (value as TimingEntry[]) : [value as TimingEntry];
+  }
+  return history;
 }
 
 function formatSeconds(ms: number): string {
@@ -31,10 +42,11 @@ function formatSeconds(ms: number): string {
 
 /**
  * Records how long a full file's inspection run took (start to finish) and compares it against
- * the previous recorded run for the SAME file + environment host — dev and staging can have very
- * different baseline speeds for reasons unrelated to a real regression, so they're never compared
- * against each other. History is persisted to `timing-history.json` (checked into git) so timings
- * can be compared across runs/commits.
+ * the most recent recorded run for the SAME file + environment host — dev and staging can have
+ * very different baseline speeds for reasons unrelated to a real regression, so they're never
+ * compared against each other. Every run is appended (never overwritten) to
+ * `timing-history.json` (checked into git), keeping up to the last `MAX_ENTRIES_PER_KEY` runs per
+ * file+environment so a trend is visible, not just the latest data point.
  *
  * This never fails the test: it's a diagnostic signal to help tell apart a genuine visual
  * regression from a run that was simply slow enough that the page hadn't fully settled before a
@@ -50,7 +62,8 @@ export function recordAndCheckTiming(
 ): void {
   const historyKey = `${key}@${host}`;
   const history = readHistory();
-  const previous = history[historyKey];
+  const entries = history[historyKey] ?? [];
+  const previous = entries[entries.length - 1];
 
   if (previous) {
     const increaseRatio = (durationMs - previous.durationMs) / previous.durationMs;
@@ -85,10 +98,15 @@ export function recordAndCheckTiming(
     });
   }
 
-  history[historyKey] = {
+  entries.push({
     durationMs,
     recordedAt: new Date().toISOString(),
     ...(appVersion ? { appVersion } : {}),
-  };
+  });
+  if (entries.length > MAX_ENTRIES_PER_KEY) {
+    entries.splice(0, entries.length - MAX_ENTRIES_PER_KEY);
+  }
+  history[historyKey] = entries;
+
   fs.writeFileSync(HISTORY_PATH, JSON.stringify(history, null, 2) + '\n');
 }
