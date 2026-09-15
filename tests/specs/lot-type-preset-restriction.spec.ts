@@ -33,12 +33,23 @@ import { checkScreenshotForDisallowedLotTypes, LotType } from '../../utils/lotTy
 const MAP_ZOOM_PERCENT = 62; // small enough to fit several lots in frame, still legible for OCR.
 const filesToCheck = lotBlockFiles.filter(({ key }) => key === 'lake-louisa');
 
-const CASES: { presetName: string; lotType: LotType; ensureOnlyTypeEnabled: (gsp: GradingSettingsPage) => Promise<void> }[] = [
-  { presetName: 'QA Preset', lotType: 'A', ensureOnlyTypeEnabled: (gsp) => gsp.ensureOnlyLotTypeAEnabled() },
-  { presetName: 'QAlotB', lotType: 'B', ensureOnlyTypeEnabled: (gsp) => gsp.ensureOnlyLotTypeBEnabled() },
+const CASES: { presetName: string; lotType: LotType; configurePreset: (gsp: GradingSettingsPage) => Promise<void> }[] = [
+  { presetName: 'QA Preset', lotType: 'A', configurePreset: (gsp) => gsp.ensureOnlyLotTypeAEnabled() },
+  {
+    presetName: 'QAlotB',
+    lotType: 'B',
+    // Only these 4 explicitly changed when the preset is created — everything else (setbacks,
+    // drainage slopes, fence, water flow, swale position, ...) is left at whatever it defaults to.
+    configurePreset: async (gsp) => {
+      await gsp.ensureOnlyLotTypeBEnabled();
+      await gsp.ensureStemWallsOff();
+      await gsp.ensureRetainingWallsOff();
+      await gsp.ensureReferencePointHighestElevation();
+    },
+  },
 ];
 
-for (const { presetName, lotType, ensureOnlyTypeEnabled } of CASES) {
+for (const { presetName, lotType, configurePreset } of CASES) {
   for (const { file, key } of filesToCheck) {
     test(`a preset restricted to Lot Type ${lotType} never grades a lot as another type ("${file}")`, async (
       { page, context },
@@ -65,7 +76,7 @@ for (const { presetName, lotType, ensureOnlyTypeEnabled } of CASES) {
       await gradingSettingsPage.openLotPresets();
       await gradingSettingsPage.ensurePresetExists(presetName);
       await gradingSettingsPage.openPreset(presetName);
-      await ensureOnlyTypeEnabled(gradingSettingsPage);
+      await configurePreset(gradingSettingsPage);
       await gradingSettingsPage.saveIfChanged();
 
       await settingsTab.reload();
