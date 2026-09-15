@@ -65,6 +65,21 @@ export function recordAndCheckTiming(
   const entries = history[historyKey] ?? [];
   const previous = entries[entries.length - 1];
 
+  // Structured twin of the human-readable annotations below, for utils/testRunReporter.ts to
+  // read reliably instead of parsing formatted text.
+  testInfo.annotations.push({
+    type: 'timing-data',
+    description: JSON.stringify({
+      key,
+      host,
+      durationMs,
+      appVersion,
+      previousDurationMs: previous?.durationMs,
+      previousAppVersion: previous?.appVersion,
+      previousRecordedAt: previous?.recordedAt,
+    }),
+  });
+
   if (previous) {
     const increaseRatio = (durationMs - previous.durationMs) / previous.durationMs;
     const sign = increaseRatio >= 0 ? '+' : '';

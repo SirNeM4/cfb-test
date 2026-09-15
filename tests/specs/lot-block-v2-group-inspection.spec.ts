@@ -6,6 +6,7 @@ import { env } from '../../config/env';
 import { lotBlockFiles } from '../../config/lotBlockFiles';
 import { compareOrSaveBaseline } from '../../utils/visualCompare';
 import { recordAndCheckTiming } from '../../utils/timingTracker';
+import { recordAppVersion } from '../../utils/appVersion';
 
 // Deep visual inspection after grading: since every Group/Zone/Pond within the same Area opens
 // the same "Area - Solutions" view, only the first entry per Area needs checking — the rest of
@@ -33,7 +34,7 @@ test.describe('Lot Block V2 - group-by-group inspection', () => {
         await loginPage.open();
         await loginPage.login(env.defaultUser.username, env.defaultUser.password);
         await loginPage.expectLoggedIn();
-        appVersion = await homePage.getAppVersion();
+        appVersion = await recordAppVersion(testInfo, page);
 
         // The "lot-block-v2" link opens a new tab with the upload modal.
         const [lotBlockTab] = await Promise.all([context.waitForEvent('page'), homePage.clickLotBlockV2()]);

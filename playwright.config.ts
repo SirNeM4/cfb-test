@@ -9,7 +9,7 @@ export default defineConfig({
   // Cap concurrency to 3 workers: if a spec has more than 3 tests (e.g. more lot-block files
   // get added), the extras queue and start as soon as a worker frees up.
   workers: process.env.CI ? 2 : 3,
-  reporter: [['html', { open: 'never' }], ['list']],
+  reporter: [['html', { open: 'never' }], ['list'], ['./utils/testRunReporter.ts']],
 
   use: {
     baseURL: env.baseUrl,

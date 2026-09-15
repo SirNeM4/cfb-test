@@ -1,16 +1,6 @@
 {
   "lake-louisa@app-dev.drtwrk.io": [
     {
-      "durationMs": 114106,
-      "recordedAt": "2026-09-14T23:47:45.612Z",
-      "appVersion": "Source: Development · v0.74.109"
-    },
-    {
-      "durationMs": 99176,
-      "recordedAt": "2026-09-15T15:34:30.513Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
       "durationMs": 95854,
       "recordedAt": "2026-09-15T15:47:29.812Z",
       "appVersion": "Source: Development · v0.74.110"
@@ -29,14 +19,39 @@
       "durationMs": 111740,
       "recordedAt": "2026-09-15T17:17:33.052Z",
       "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 108099,
+      "recordedAt": "2026-09-15T18:02:19.874Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 106849,
+      "recordedAt": "2026-09-15T18:12:11.891Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 112175,
+      "recordedAt": "2026-09-15T18:14:58.606Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 109227,
+      "recordedAt": "2026-09-15T18:27:05.521Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 109487,
+      "recordedAt": "2026-09-15T18:49:22.560Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 113261,
+      "recordedAt": "2026-09-15T19:07:21.776Z",
+      "appVersion": "Source: Development · v0.74.110"
     }
   ],
   "coleman-ridge@app-dev.drtwrk.io": [
-    {
-      "durationMs": 439438,
-      "recordedAt": "2026-09-14T23:53:11.039Z",
-      "appVersion": "Source: Development · v0.74.109"
-    },
     {
       "durationMs": 322498,
       "recordedAt": "2026-09-15T15:38:13.912Z",
@@ -61,14 +76,34 @@
       "durationMs": 409768,
       "recordedAt": "2026-09-15T17:22:30.993Z",
       "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 407445,
+      "recordedAt": "2026-09-15T18:07:19.249Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 428637,
+      "recordedAt": "2026-09-15T18:20:15.067Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 435476,
+      "recordedAt": "2026-09-15T18:32:31.883Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 440730,
+      "recordedAt": "2026-09-15T18:54:53.838Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 387100,
+      "recordedAt": "2026-09-15T19:11:55.657Z",
+      "appVersion": "Source: Development · v0.74.110"
     }
   ],
   "goose-creek@app-dev.drtwrk.io": [
-    {
-      "durationMs": 568174,
-      "recordedAt": "2026-09-14T23:55:19.778Z",
-      "appVersion": "Source: Development · v0.74.109"
-    },
     {
       "durationMs": 469055,
       "recordedAt": "2026-09-15T15:40:40.478Z",
@@ -92,6 +127,31 @@
     {
       "durationMs": 533602,
       "recordedAt": "2026-09-15T17:24:34.911Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 515997,
+      "recordedAt": "2026-09-15T18:09:07.667Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 590015,
+      "recordedAt": "2026-09-15T18:22:56.412Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 573213,
+      "recordedAt": "2026-09-15T18:34:49.621Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 582961,
+      "recordedAt": "2026-09-15T18:57:16.019Z",
+      "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 557125,
+      "recordedAt": "2026-09-15T19:14:45.698Z",
       "appVersion": "Source: Development · v0.74.110"
     }
   ],
