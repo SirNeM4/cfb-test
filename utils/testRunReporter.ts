@@ -17,6 +17,9 @@ export interface TimingData {
   previousDurationMs?: number;
   previousAppVersion?: string;
   previousRecordedAt?: string;
+  /** Duration/version of the most recent run on a DIFFERENT app version — what the report compares against. */
+  previousVersionDurationMs?: number;
+  previousVersion?: string;
 }
 
 export interface ImageTrio {
@@ -77,15 +80,23 @@ function formatSeconds(ms: number | undefined): string {
   return ms === undefined ? '-' : `${(ms / 1000).toFixed(1)}s`;
 }
 
+/** e.g. "Source: Development · v0.74.110" -> "v0.74.110", for compact table cells. */
+function shortVersion(version: string | undefined): string {
+  if (!version) return '-';
+  const match = version.match(/v?([\d.]+)/);
+  return match ? `v${match[1]}` : version;
+}
+
 function isFailure(record: TestRecord): boolean {
   return record.status !== 'passed' && record.status !== 'skipped';
 }
 
+/** Compares this run's duration against the last run recorded on a DIFFERENT app version. */
 function durationVerdict(timing: TimingData | undefined): { label: string; cssClass: string } {
-  if (!timing || timing.previousDurationMs === undefined) {
-    return { label: 'first run recorded', cssClass: 'neutral' };
+  if (!timing || timing.previousVersionDurationMs === undefined) {
+    return { label: 'no previous version to compare', cssClass: 'neutral' };
   }
-  const ratio = (timing.durationMs - timing.previousDurationMs) / timing.previousDurationMs;
+  const ratio = (timing.durationMs - timing.previousVersionDurationMs) / timing.previousVersionDurationMs;
   const pct = `${ratio >= 0 ? '+' : ''}${(ratio * 100).toFixed(1)}%`;
   if (ratio >= TIME_TOLERANCE) return { label: `${pct} slower`, cssClass: 'bad' };
   if (ratio <= -TIME_TOLERANCE) return { label: `${pct} faster`, cssClass: 'good' };
@@ -109,7 +120,7 @@ function buildSummaryRowHtml(record: TestRecord, index: number): string {
   const fileLabel = `${escapeHtml(record.specFile)}<span class="title">${escapeHtml(record.title)}</span>`;
   const fileCell = isFailure(record) ? `<a href="#test-${index}">${fileLabel}</a>` : fileLabel;
   const mapName = record.timing?.key ? formatMapName(record.timing.key) : '-';
-  const previousTime = formatSeconds(record.timing?.previousDurationMs);
+  const previousTime = formatSeconds(record.timing?.previousVersionDurationMs);
   const currentTime = formatSeconds(record.timing?.durationMs ?? record.durationMs);
 
   return `<tr>
@@ -121,12 +132,18 @@ function buildSummaryRowHtml(record: TestRecord, index: number): string {
     </tr>`;
 }
 
-/** Row in the "Failed tests" table — full detail: duration comparison, error, and any diff/failure images. */
+/**
+ * Row in the "Failed tests" table — full detail: what/where (file, map, status), this run's
+ * version and duration, the last DIFFERENT version's duration for comparison, the verdict, and
+ * any error/diff/failure images.
+ */
 function buildDetailRowHtml(record: TestRecord, index: number): string {
   const verdict = durationVerdict(record.timing);
-  const durationSec = (record.durationMs / 1000).toFixed(1);
-  const previousSec =
-    record.timing?.previousDurationMs !== undefined ? (record.timing.previousDurationMs / 1000).toFixed(1) : null;
+  const mapName = record.timing?.key ? formatMapName(record.timing.key) : '-';
+  const currentVersion = shortVersion(recordVersion(record));
+  const currentDuration = formatSeconds(record.durationMs);
+  const previousVersion = shortVersion(record.timing?.previousVersion);
+  const previousDuration = formatSeconds(record.timing?.previousVersionDurationMs);
 
   const errorHtml = record.errors.length ? `<div class="error">${escapeHtml(record.errors.join('\n\n'))}</div>` : '';
   const notesHtml = record.notes.map((n) => `<div class="note">${escapeHtml(n)}</div>`).join('');
@@ -141,10 +158,13 @@ function buildDetailRowHtml(record: TestRecord, index: number): string {
 
   return `<tr id="test-${index}">
       <td>${escapeHtml(record.specFile)}<span class="title">${escapeHtml(record.title)} &middot; project: ${escapeHtml(record.project)}</span></td>
+      <td>${escapeHtml(mapName)}</td>
       <td class="status-${record.status}">${record.status.toUpperCase()}</td>
-      <td>${durationSec}s</td>
-      <td class="${verdict.cssClass}">${verdict.label}${previousSec !== null ? ` <span class="title" style="display:inline">(prev ${previousSec}s)</span>` : ''}</td>
-      <td>${escapeHtml(recordVersion(record) ?? '-')}</td>
+      <td>${previousVersion}</td>
+      <td>${previousDuration}</td>
+      <td>${currentVersion}</td>
+      <td>${currentDuration}</td>
+      <td class="${verdict.cssClass}">${verdict.label}</td>
       <td>${errorHtml}${notesHtml}${imagesHtml}${failureScreenshotsHtml}</td>
     </tr>`;
 }
@@ -258,10 +278,13 @@ export function buildReportHtml(records: TestRecord[]): string {
     <thead>
       <tr>
         <th>File</th>
+        <th>Map</th>
         <th>Status</th>
-        <th>Duration</th>
-        <th>vs previous run (&plusmn;15%)</th>
-        <th>App version</th>
+        <th>Previous version</th>
+        <th>Previous duration</th>
+        <th>Current version</th>
+        <th>Current duration</th>
+        <th>vs previous version (&plusmn;15%)</th>
         <th>Details</th>
       </tr>
     </thead>

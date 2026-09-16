@@ -40,7 +40,7 @@
   <h1>Playwright test run report</h1>
   <div class="meta">
     <div class="summary">
-      <span>Generated: 2026-09-16T14:44:03.214Z</span>
+      <span>Generated: 2026-09-16T15:05:03.243Z</span>
       <span>Environment: app-dev.drtwrk.io</span>
       <span>App version: Source: Development · v0.74.111</span>
     </div>
@@ -80,35 +80,35 @@
 <tr>
       <td><a href="#test-2">lot-block-v2-group-inspection.spec.ts<span class="title">every group/zone/pond looks the same on entry after grading &quot;Lake Louisa without sidewalk.json&quot;</span></a></td>
       <td>Lake Louisa</td>
-      <td>67.9s</td>
+      <td>113.3s</td>
       <td>69.2s</td>
       <td class="status-failed">FAILED</td>
     </tr>
 <tr>
       <td><a href="#test-3">lot-block-v2-group-inspection.spec.ts<span class="title">every group/zone/pond looks the same on entry after grading &quot;ColemanRidgePH1.json&quot;</span></a></td>
       <td>Coleman Ridge</td>
-      <td>292.5s</td>
+      <td>387.1s</td>
       <td>308.6s</td>
       <td class="status-failed">FAILED</td>
     </tr>
 <tr>
       <td>lot-block-v2-group-inspection.spec.ts<span class="title">every group/zone/pond looks the same on entry after grading &quot;Goose-Creek107-09102026.json&quot;</span></td>
       <td>Goose Creek</td>
-      <td>294.1s</td>
+      <td>557.1s</td>
       <td>366.2s</td>
       <td class="status-passed">PASSED</td>
     </tr>
 <tr>
       <td>lot-block-v2-group-inspection.spec.ts<span class="title">every group/zone/pond looks the same on entry after grading &quot;LSF-Phase1-09162026.json&quot;</span></td>
       <td>Lsf Phase1</td>
-      <td>421.8s</td>
+      <td>-</td>
       <td>476.4s</td>
       <td class="status-passed">PASSED</td>
     </tr>
 <tr>
       <td>lot-block-v2-group-inspection.spec.ts<span class="title">every group/zone/pond looks the same on entry after grading &quot;LSF-Phase2-09162026.json&quot;</span></td>
       <td>Lsf Phase2</td>
-      <td>857.6s</td>
+      <td>-</td>
       <td>921.2s</td>
       <td class="status-passed">PASSED</td>
     </tr>
@@ -119,20 +119,26 @@
     <thead>
       <tr>
         <th>File</th>
+        <th>Map</th>
         <th>Status</th>
-        <th>Duration</th>
-        <th>vs previous run (&plusmn;15%)</th>
-        <th>App version</th>
+        <th>Previous version</th>
+        <th>Previous duration</th>
+        <th>Current version</th>
+        <th>Current duration</th>
+        <th>vs previous version (&plusmn;15%)</th>
         <th>Details</th>
       </tr>
     </thead>
     <tbody>
       <tr id="test-2">
       <td>lot-block-v2-group-inspection.spec.ts<span class="title">every group/zone/pond looks the same on entry after grading &quot;Lake Louisa without sidewalk.json&quot; &middot; project: chrome</span></td>
+      <td>Lake Louisa</td>
       <td class="status-failed">FAILED</td>
+      <td>v0.74.110</td>
+      <td>113.3s</td>
+      <td>v0.74.111</td>
       <td>69.2s</td>
-      <td class="neutral">+2.0% (about the same) <span class="title" style="display:inline">(prev 67.9s)</span></td>
-      <td>Source: Development · v0.74.111</td>
+      <td class="good">-38.9% faster</td>
       <td><div class="error">Error: expect(page).toHaveScreenshot(expected) failed
 
   23599 pixels (ratio 0.03 of all image pixels) are different.
@@ -143,10 +149,13 @@ Known limitation: the grading engine assigns a non-deterministic Group/Zone/Pond
     </tr>
 <tr id="test-3">
       <td>lot-block-v2-group-inspection.spec.ts<span class="title">every group/zone/pond looks the same on entry after grading &quot;ColemanRidgePH1.json&quot; &middot; project: chrome</span></td>
+      <td>Coleman Ridge</td>
       <td class="status-failed">FAILED</td>
+      <td>v0.74.110</td>
+      <td>387.1s</td>
+      <td>v0.74.111</td>
       <td>308.6s</td>
-      <td class="neutral">+5.5% (about the same) <span class="title" style="display:inline">(prev 292.5s)</span></td>
-      <td>Source: Development · v0.74.111</td>
+      <td class="good">-20.3% faster</td>
       <td><div class="error">Error: expect(page).toHaveScreenshot(expected) failed
 
   33300 pixels (ratio 0.04 of all image pixels) are different.
