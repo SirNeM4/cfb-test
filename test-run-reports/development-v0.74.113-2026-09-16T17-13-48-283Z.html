@@ -33,6 +33,10 @@
   #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 1000; align-items: center; justify-content: center; cursor: zoom-out; padding: 24px; box-sizing: border-box; }
   #lightbox.open { display: flex; }
   #lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 0 24px rgba(0,0,0,0.6); }
+  details.section { margin: 28px 0 10px; }
+  details.section > summary { font-size: 15px; font-weight: 600; cursor: pointer; padding: 4px 0; }
+  details.section > summary::marker { color: #9aa0a6; }
+  details.section table { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -40,35 +44,44 @@
   <h1>Playwright test run report</h1>
   <div class="meta">
     <div class="summary">
-      <span>Generated: 2026-09-16T16:34:53.890Z</span>
+      <span>Generated: 2026-09-16T17:13:48.283Z</span>
       <span>Environment: app-dev.drtwrk.io</span>
       <span>App version: Source: Development · v0.74.113</span>
     </div>
     <div class="summary">
-      <span>7 tests</span>
-      <span class="status-passed">7 passed</span>
+      <span>8 tests</span>
+      <span class="status-passed">8 passed</span>
       <span class="status-failed">0 failed</span>
       <span class="status-skipped">0 skipped</span>
     </div>
   </div>
-  <h2>All tests</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>File</th>
-        <th>Map</th>
-        <th>Previous version time</th>
-        <th>Current version time</th>
-        <th>vs previous version (&plusmn;15%)</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
+  <details class="section" open>
+    <summary>All tests</summary>
+    <table>
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Map</th>
+          <th>Previous version time</th>
+          <th>Current version time</th>
+          <th>vs previous version (&plusmn;15%)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
       <td>grading-settings.setup.ts<span class="title">Configures the shared default grading preset once, before anything else runs — every other test in the suite depends on this being in place first.</span></td>
       <td>-</td>
+      <td>N/A</td>
+      <td>10.7s</td>
+      <td class="neutral">no previous version to compare</td>
+      <td class="status-passed">PASSED</td>
+    </tr>
+<tr>
+      <td>lot-preset-custom-grading.spec.ts<span class="title">Creates a custom Lot preset, edits it, assigns it to a Group, then grades and confirms the preset was actually applied — exercises the custom-preset path, not just the shared default.</span></td>
       <td>-</td>
-      <td>10.9s</td>
+      <td>N/A</td>
+      <td>80.1s</td>
       <td class="neutral">no previous version to compare</td>
       <td class="status-passed">PASSED</td>
     </tr>
@@ -89,6 +102,14 @@
       <td class="status-passed">PASSED</td>
     </tr>
 <tr>
+      <td>lot-block-v2-group-inspection.spec.ts<span class="title">Uploads and grades &quot;Coleman Ridge Ph2&quot;, confirms the preset actually used for grading matches the configured grading defaults (via the Solution Summary panel), then walks every Group/Zone/Pond at a consistent zoom level across three view states — default 2D, an orbited 3D angle (checking the terrain for zero-elevation artifacts), and 2D with the lot mesh shown — comparing each capture against its last known-good baseline.</span></td>
+      <td>Coleman Ridge Ph2</td>
+      <td>N/A</td>
+      <td>628.3s</td>
+      <td class="neutral">no previous version to compare</td>
+      <td class="status-passed">PASSED</td>
+    </tr>
+<tr>
       <td>lot-block-v2-group-inspection.spec.ts<span class="title">Uploads and grades &quot;Goose Creek&quot;, confirms the preset actually used for grading matches the configured grading defaults (via the Solution Summary panel), then walks every Group/Zone/Pond at a consistent zoom level across three view states — default 2D, an orbited 3D angle (checking the terrain for zero-elevation artifacts), and 2D with the lot mesh shown — comparing each capture against its last known-good baseline.</span></td>
       <td>Goose Creek</td>
       <td>366.2s</td>
@@ -105,14 +126,6 @@
       <td class="status-passed">PASSED</td>
     </tr>
 <tr>
-      <td>lot-preset-custom-grading.spec.ts<span class="title">Creates a custom Lot preset, edits it, assigns it to a Group, then grades and confirms the preset was actually applied — exercises the custom-preset path, not just the shared default.</span></td>
-      <td>-</td>
-      <td>-</td>
-      <td>80.1s</td>
-      <td class="neutral">no previous version to compare</td>
-      <td class="status-passed">PASSED</td>
-    </tr>
-<tr>
       <td>lot-block-v2-group-inspection.spec.ts<span class="title">Uploads and grades &quot;LSF Phase2&quot;, confirms the preset actually used for grading matches the configured grading defaults (via the Solution Summary panel), then walks every Group/Zone/Pond at a consistent zoom level across three view states — default 2D, an orbited 3D angle (checking the terrain for zero-elevation artifacts), and 2D with the lot mesh shown — comparing each capture against its last known-good baseline.</span></td>
       <td>LSF Phase2</td>
       <td>921.2s</td>
@@ -120,9 +133,26 @@
       <td class="neutral">-1.0% (about the same)</td>
       <td class="status-passed">PASSED</td>
     </tr>
-    </tbody>
-  </table>
+      </tbody>
+    </table>
+  </details>
   
+  <details class="section" open>
+    <summary>Timing history</summary>
+    <table>
+      <thead>
+        <tr><th>File</th><th>v0.74.110</th><th>v0.74.111</th><th>v0.74.113</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Coleman Ridge</td><td>387.1s / 6.5 mins</td><td>308.6s / 5.1 mins</td><td>337.0s / 5.6 mins</td></tr>
+<tr><td>Coleman Ridge Ph2</td><td>N/A</td><td>N/A</td><td>628.3s / 10.5 mins</td></tr>
+<tr><td>Goose Creek</td><td>557.1s / 9.3 mins</td><td>366.2s / 6.1 mins</td><td>353.1s / 5.9 mins</td></tr>
+<tr><td>Lake Louisa</td><td>113.3s / 1.9 mins</td><td>69.2s / 1.2 mins</td><td>102.1s / 1.7 mins</td></tr>
+<tr><td>LSF Phase1</td><td>N/A</td><td>476.4s / 7.9 mins</td><td>467.6s / 7.8 mins</td></tr>
+<tr><td>LSF Phase2</td><td>N/A</td><td>921.2s / 15.4 mins</td><td>911.8s / 15.2 mins</td></tr>
+      </tbody>
+    </table>
+  </details>
   <script>
     (function () {
       var lightbox = document.getElementById('lightbox');

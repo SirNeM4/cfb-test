@@ -11,14 +11,19 @@ const SIGNIFICANT_INCREASE_RATIO = 0.3;
 // Keep enough history to see a trend per file+environment without the file growing forever.
 const MAX_ENTRIES_PER_KEY = 10;
 
-interface TimingEntry {
+export interface TimingEntry {
   durationMs: number;
   recordedAt: string;
   /** e.g. "Source: Development · v0.74.109" — read from the home page, when available. */
   appVersion?: string;
 }
 
-type TimingHistory = Record<string, TimingEntry[]>;
+export type TimingHistory = Record<string, TimingEntry[]>;
+
+/** Exposed so utils/testRunReporter.ts can build a full timing-history table, not just the single previous-vs-current comparison recordAndCheckTiming reports per test. */
+export function getTimingHistory(): TimingHistory {
+  return readHistory();
+}
 
 function readHistory(): TimingHistory {
   let raw: Record<string, unknown>;
