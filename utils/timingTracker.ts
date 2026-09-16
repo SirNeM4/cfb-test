@@ -65,6 +65,13 @@ export function recordAndCheckTiming(
   const entries = history[historyKey] ?? [];
   const previous = entries[entries.length - 1];
 
+  // The most recent entry recorded under a DIFFERENT app version than this run's — used by the
+  // report to answer "how does this version compare to the one before it", which is a different
+  // question than `previous` above (the literal last run, possibly the same version re-run).
+  const previousVersionEntry = appVersion
+    ? [...entries].reverse().find((entry) => entry.appVersion && entry.appVersion !== appVersion)
+    : undefined;
+
   // Structured twin of the human-readable annotations below, for utils/testRunReporter.ts to
   // read reliably instead of parsing formatted text.
   testInfo.annotations.push({
@@ -77,6 +84,8 @@ export function recordAndCheckTiming(
       previousDurationMs: previous?.durationMs,
       previousAppVersion: previous?.appVersion,
       previousRecordedAt: previous?.recordedAt,
+      previousVersionDurationMs: previousVersionEntry?.durationMs,
+      previousVersion: previousVersionEntry?.appVersion,
     }),
   });
 
