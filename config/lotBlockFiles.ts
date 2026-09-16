@@ -13,8 +13,6 @@ export const lotBlockFiles: LotBlockFileConfig[] = [
   { file: 'Lake Louisa without sidewalk.json', key: 'lake-louisa' },
   { file: 'ColemanRidgePH1.json', key: 'coleman-ridge' },
   { file: 'Goose-Creek107-09102026.json', key: 'goose-creek' },
-  // Skipped: still has errors, ignore for now.
-  // { file: 'Harbor-reserve09-09-2026.json', key: 'harbor-reserve' },
-  // Skipped: takes much longer to grade than the others.
-  // { file: 'LSF7C-Phase1-Staging.json', key: 'lsf7c-phase1-staging' },
+  { file: 'LSF-Phase1-09162026.json', key: 'lsf-phase1' },
+  { file: 'LSF-Phase2-09162026.json', key: 'lsf-phase2' },
 ];

@@ -224,8 +224,11 @@ export class LotBlockPage extends BasePage {
     await this.smokeEmAllMenuItem.click();
   }
 
-  /** Waits for the grading queue panel to report "Grading complete" (up to 300s by default). */
-  async expectGradingComplete(timeout = 300000): Promise<void> {
+  /**
+   * Waits for the grading queue panel to report "Grading complete" (up to 600s by default —
+   * some of the larger upload files genuinely need most of that).
+   */
+  async expectGradingComplete(timeout = 600000): Promise<void> {
     await expect(this.taskPanelTitle).toBeVisible({ timeout: 30000 });
     await expect(this.taskPanelTitle).toHaveText('Grading complete', { timeout });
   }
