@@ -6,9 +6,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  // Cap concurrency to 3 workers: if a spec has more than 3 tests (e.g. more lot-block files
-  // get added), the extras queue and start as soon as a worker frees up.
-  workers: process.env.CI ? 2 : 3,
+  // Cap concurrency to 2 workers: running more of the heavier lot-block files side by side was
+  // slowing each one down enough to skew timing comparisons. Extra tests queue and start as soon
+  // as a worker frees up.
+  workers: 2,
   reporter: [['html', { open: 'never' }], ['list'], ['./utils/testRunReporter.ts']],
 
   use: {
