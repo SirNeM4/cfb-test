@@ -1,6 +1,7 @@
 import type { Reporter, TestCase, TestResult, FullResult } from '@playwright/test/reporter';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getTimingHistory } from './timingTracker';
 
 const REPORTS_DIR = path.resolve(__dirname, '..', 'test-run-reports');
 
@@ -110,12 +111,17 @@ function describeTest(record: TestRecord): string {
 }
 
 function formatSeconds(ms: number | undefined): string {
-  return ms === undefined ? '-' : `${(ms / 1000).toFixed(1)}s`;
+  return ms === undefined ? 'N/A' : `${(ms / 1000).toFixed(1)}s`;
+}
+
+/** e.g. 337045 -> "337.0s / 5.6 mins" — used by the Timing history table, where runs span minutes. */
+function formatSecondsAndMinutes(ms: number | undefined): string {
+  return ms === undefined ? 'N/A' : `${(ms / 1000).toFixed(1)}s / ${(ms / 60000).toFixed(1)} mins`;
 }
 
 /** e.g. "Source: Development · v0.74.110" -> "v0.74.110", for compact table cells. */
 function shortVersion(version: string | undefined): string {
-  if (!version) return '-';
+  if (!version) return 'N/A';
   const match = version.match(/v?([\d.]+)/);
   return match ? `v${match[1]}` : version;
 }
@@ -226,6 +232,66 @@ function buildImageTrioHtml(img: ImageTrio): string {
 }
 
 /**
+ * A file-by-version matrix built straight from timing-history.json (not from `records`, which
+ * only ever carries the current run plus its immediate previous-version comparison) — so this is
+ * the one place the report shows the full trend across every recorded app version, not just the
+ * last two. A cell is "N/A" when that file was never recorded against that version.
+ */
+function buildTimingHistoryTableHtml(hosts: string[]): string {
+  const history = getTimingHistory();
+  const hostSet = new Set(hosts);
+
+  const durationByKeyAndVersion = new Map<string, Map<string, number>>();
+  const versionFirstSeenAt = new Map<string, string>();
+
+  for (const [historyKey, entries] of Object.entries(history)) {
+    const at = historyKey.lastIndexOf('@');
+    if (at === -1) continue;
+    const key = historyKey.slice(0, at);
+    const host = historyKey.slice(at + 1);
+    if (!hostSet.has(host)) continue;
+
+    const versionDurations = durationByKeyAndVersion.get(key) ?? new Map<string, number>();
+    for (const entry of entries) {
+      if (!entry.appVersion) continue;
+      // Entries are chronological, so the last write for a given version is its most recent run.
+      versionDurations.set(entry.appVersion, entry.durationMs);
+      if (!versionFirstSeenAt.has(entry.appVersion) || entry.recordedAt < versionFirstSeenAt.get(entry.appVersion)!) {
+        versionFirstSeenAt.set(entry.appVersion, entry.recordedAt);
+      }
+    }
+    durationByKeyAndVersion.set(key, versionDurations);
+  }
+
+  if (durationByKeyAndVersion.size === 0) return '';
+
+  const versions = [...versionFirstSeenAt.keys()].sort((a, b) =>
+    versionFirstSeenAt.get(a)!.localeCompare(versionFirstSeenAt.get(b)!)
+  );
+
+  const headerCells = versions.map((v) => `<th>${escapeHtml(shortVersion(v))}</th>`).join('');
+  const rows = [...durationByKeyAndVersion.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, versionDurations]) => {
+      const cells = versions.map((v) => `<td>${formatSecondsAndMinutes(versionDurations.get(v))}</td>`).join('');
+      return `<tr><td>${escapeHtml(formatMapName(key))}</td>${cells}</tr>`;
+    })
+    .join('\n');
+
+  return `<details class="section" open>
+    <summary>Timing history</summary>
+    <table>
+      <thead>
+        <tr><th>File</th>${headerCells}</tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  </details>`;
+}
+
+/**
  * Builds the full report HTML from a list of records. Exported (and free of any dependency on the
  * live Playwright Reporter lifecycle) so a report can also be regenerated later from
  * already-recorded results — e.g. after tweaking the report's layout — without re-running tests.
@@ -235,7 +301,7 @@ export function buildReportHtml(records: TestRecord[]): string {
   const failedRecords = records.map((record, index) => ({ record, index })).filter(({ record }) => isFailure(record));
   const failed = failedRecords.length;
   const skipped = records.filter((r) => r.status === 'skipped').length;
-  const hosts = [...new Set(records.map((r) => r.timing?.host).filter(Boolean))];
+  const hosts = [...new Set(records.map((r) => r.timing?.host).filter((h): h is string => !!h))];
   const versions = [...new Set(records.map((r) => recordVersion(r)).filter(Boolean))];
 
   return `<!doctype html>
@@ -273,6 +339,10 @@ export function buildReportHtml(records: TestRecord[]): string {
   #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 1000; align-items: center; justify-content: center; cursor: zoom-out; padding: 24px; box-sizing: border-box; }
   #lightbox.open { display: flex; }
   #lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 0 24px rgba(0,0,0,0.6); }
+  details.section { margin: 28px 0 10px; }
+  details.section > summary { font-size: 15px; font-weight: 600; cursor: pointer; padding: 4px 0; }
+  details.section > summary::marker { color: #9aa0a6; }
+  details.section table { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -291,45 +361,50 @@ export function buildReportHtml(records: TestRecord[]): string {
       <span class="status-skipped">${skipped} skipped</span>
     </div>
   </div>
-  <h2>All tests</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>File</th>
-        <th>Map</th>
-        <th>Previous version time</th>
-        <th>Current version time</th>
-        <th>vs previous version (&plusmn;15%)</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${records.map((r, i) => buildSummaryRowHtml(r, i)).join('\n')}
-    </tbody>
-  </table>
+  <details class="section" open>
+    <summary>All tests</summary>
+    <table>
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Map</th>
+          <th>Previous version time</th>
+          <th>Current version time</th>
+          <th>vs previous version (&plusmn;15%)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${records.map((r, i) => buildSummaryRowHtml(r, i)).join('\n')}
+      </tbody>
+    </table>
+  </details>
   ${
     failedRecords.length > 0
-      ? `<h2>Failed tests</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>File</th>
-        <th>Map</th>
-        <th>Status</th>
-        <th>Previous version</th>
-        <th>Previous duration</th>
-        <th>Current version</th>
-        <th>Current duration</th>
-        <th>vs previous version (&plusmn;15%)</th>
-        <th>Details</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${failedRecords.map(({ record, index }) => buildDetailRowHtml(record, index)).join('\n')}
-    </tbody>
-  </table>`
+      ? `<details class="section" open>
+    <summary>Failed tests</summary>
+    <table>
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Map</th>
+          <th>Status</th>
+          <th>Previous version</th>
+          <th>Previous duration</th>
+          <th>Current version</th>
+          <th>Current duration</th>
+          <th>vs previous version (&plusmn;15%)</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${failedRecords.map(({ record, index }) => buildDetailRowHtml(record, index)).join('\n')}
+      </tbody>
+    </table>
+  </details>`
       : ''
   }
+  ${buildTimingHistoryTableHtml(hosts)}
   <script>
     (function () {
       var lightbox = document.getElementById('lightbox');
@@ -373,9 +448,13 @@ export function writeReport(records: TestRecord[]): string {
  *
  * Relies on utils/timingTracker.ts's 'timing-data' annotation for the structured duration/version
  * numbers, rather than re-deriving them, so the two stay consistent by construction.
+ *
+ * playwright.config.ts retries a failed test once. `onTestEnd` fires once per attempt with the
+ * same `test.id`, so records are keyed by it and each attempt overwrites the last — the report
+ * ends up with one unified row per test (the final attempt's result), not one row per attempt.
  */
 export default class TestRunReporter implements Reporter {
-  private records: TestRecord[] = [];
+  private recordsByTestId = new Map<string, TestRecord>();
 
   onTestEnd(test: TestCase, result: TestResult): void {
     let timing: TimingData | undefined;
@@ -396,7 +475,13 @@ export default class TestRunReporter implements Reporter {
       }
     }
 
-    this.records.push({
+    if (result.retry > 0) {
+      notes.push(
+        `Retried once — the first attempt failed; this run's final result (${result.status}) came from the retry.`
+      );
+    }
+
+    this.recordsByTestId.set(test.id, {
       title: test.title,
       specFile: path.basename(test.location.file),
       project: test.parent.project()?.name ?? '',
@@ -429,8 +514,8 @@ export default class TestRunReporter implements Reporter {
   }
 
   onEnd(_result: FullResult): void {
-    if (this.records.length === 0) return;
-    const filePath = writeReport(this.records);
+    if (this.recordsByTestId.size === 0) return;
+    const filePath = writeReport([...this.recordsByTestId.values()]);
     console.log(`\nTest run report: ${filePath}`);
   }
 }
