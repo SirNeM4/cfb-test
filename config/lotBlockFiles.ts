@@ -11,7 +11,7 @@ export interface LotBlockFileConfig {
  */
 export const lotBlockFiles: LotBlockFileConfig[] = [
   { file: 'Lake Louisa without sidewalk.json', key: 'lake-louisa' },
-  { file: 'ColemanRidgePH1.json', key: 'coleman-ridge' },
+  { file: 'Coleman-RidgePh1-09162026.json', key: 'coleman-ridge' },
   { file: 'Goose-Creek107-09102026.json', key: 'goose-creek' },
   { file: 'LSF-Phase1-09162026.json', key: 'lsf-phase1' },
   { file: 'LSF-Phase2-09162026.json', key: 'lsf-phase2' },

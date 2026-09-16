@@ -1,11 +1,6 @@
 {
   "lake-louisa@app-dev.drtwrk.io": [
     {
-      "durationMs": 108099,
-      "recordedAt": "2026-09-15T18:02:19.874Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
       "durationMs": 106849,
       "recordedAt": "2026-09-15T18:12:11.891Z",
       "appVersion": "Source: Development · v0.74.110"
@@ -49,14 +44,14 @@
       "durationMs": 69231,
       "recordedAt": "2026-09-16T14:27:43.436Z",
       "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 102074,
+      "recordedAt": "2026-09-16T16:13:20.586Z",
+      "appVersion": "Source: Development · v0.74.113"
     }
   ],
   "coleman-ridge@app-dev.drtwrk.io": [
-    {
-      "durationMs": 409768,
-      "recordedAt": "2026-09-15T17:22:30.993Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
     {
       "durationMs": 407445,
       "recordedAt": "2026-09-15T18:07:19.249Z",
@@ -101,14 +96,14 @@
       "durationMs": 308641,
       "recordedAt": "2026-09-16T14:31:42.851Z",
       "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 336982,
+      "recordedAt": "2026-09-16T16:17:15.494Z",
+      "appVersion": "Source: Development · v0.74.113"
     }
   ],
   "goose-creek@app-dev.drtwrk.io": [
-    {
-      "durationMs": 515997,
-      "recordedAt": "2026-09-15T18:09:07.667Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
     {
       "durationMs": 590015,
       "recordedAt": "2026-09-15T18:22:56.412Z",
@@ -153,6 +148,11 @@
       "durationMs": 366184,
       "recordedAt": "2026-09-16T14:32:40.387Z",
       "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 353110,
+      "recordedAt": "2026-09-16T16:19:16.090Z",
+      "appVersion": "Source: Development · v0.74.113"
     }
   ],
   "lake-louisa@app-staging.drtwrk.io": [
@@ -201,6 +201,11 @@
       "durationMs": 476408,
       "recordedAt": "2026-09-16T14:08:05.143Z",
       "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 467563,
+      "recordedAt": "2026-09-16T16:25:10.627Z",
+      "appVersion": "Source: Development · v0.74.113"
     }
   ],
   "lsf-phase2@app-dev.drtwrk.io": [
@@ -223,6 +228,11 @@
       "durationMs": 921196,
       "recordedAt": "2026-09-16T14:18:52.813Z",
       "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 911750,
+      "recordedAt": "2026-09-16T16:34:35.842Z",
+      "appVersion": "Source: Development · v0.74.113"
     }
   ]
 }
