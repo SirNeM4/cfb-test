@@ -1,0 +1,175 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Test run report</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; background: #0f1115; color: #e6e6e6; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 28px 0 10px; }
+  a { color: #93c5fd; }
+  .meta { color: #9aa0a6; margin-bottom: 20px; font-size: 13px; line-height: 1.6; }
+  .summary span { margin-right: 16px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #2a2d34; padding: 8px 10px; text-align: left; font-size: 13px; vertical-align: top; }
+  th { background: #1a1d23; position: sticky; top: 0; }
+  tr:nth-child(even) { background: #14161b; }
+  tr:target { outline: 2px solid #f87171; outline-offset: -2px; }
+  .status-passed { color: #4ade80; font-weight: 600; }
+  .status-failed, .status-timedOut, .status-interrupted { color: #f87171; font-weight: 600; }
+  .status-skipped { color: #9aa0a6; font-weight: 600; }
+  .good { color: #4ade80; font-weight: 600; }
+  .bad { color: #f87171; font-weight: 600; }
+  .neutral { color: #facc15; font-weight: 600; }
+  .title { color: #9aa0a6; font-size: 11px; display: block; margin-top: 2px; }
+  .images { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .images figure { margin: 0; width: 260px; }
+  .images img { width: 100%; border: 1px solid #2a2d34; border-radius: 4px; display: block; cursor: zoom-in; }
+  .images figcaption { font-size: 11px; color: #9aa0a6; margin-top: 4px; }
+  .diff-block { margin-top: 10px; padding: 10px; background: #14161b; border-radius: 6px; }
+  .diff-name { font-size: 12px; color: #d1d5db; }
+  .error { white-space: pre-wrap; color: #f87171; font-size: 12px; background: #1a1214; padding: 8px; border-radius: 4px; margin-top: 6px; max-height: 200px; overflow: auto; }
+  .note { font-size: 12px; color: #facc15; margin-top: 6px; }
+  #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 1000; align-items: center; justify-content: center; cursor: zoom-out; padding: 24px; box-sizing: border-box; }
+  #lightbox.open { display: flex; }
+  #lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 0 24px rgba(0,0,0,0.6); }
+  details.section { margin: 28px 0 10px; }
+  details.section > summary { font-size: 15px; font-weight: 600; cursor: pointer; padding: 4px 0; }
+  details.section > summary::marker { color: #9aa0a6; }
+  details.section table { margin-top: 10px; }
+</style>
+</head>
+<body>
+  <div id="lightbox"><img id="lightbox-img" src="" alt=""></div>
+  <h1>Playwright test run report</h1>
+  <div class="meta">
+    <div class="summary">
+      <span>Generated: 2026-09-16T17:13:48.283Z</span>
+      <span>Environment: app-dev.drtwrk.io</span>
+      <span>App version: Source: Development · v0.74.113</span>
+    </div>
+    <div class="summary">
+      <span>8 tests</span>
+      <span class="status-passed">8 passed</span>
+      <span class="status-failed">0 failed</span>
+      <span class="status-skipped">0 skipped</span>
+    </div>
+  </div>
+  <details class="section" open>
+    <summary>All tests</summary>
+    <table>
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Map</th>
+          <th>Previous version time</th>
+          <th>Current version time</th>
+          <th>vs previous version (&plusmn;15%)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+      <td>grading-settings.setup.ts<span class="title">Configures the shared default grading preset once, before anything else runs — every other test in the suite depends on this being in place first.</span></td>
+      <td>-</td>
+      <td>N/A</td>
+      <td>10.7s</td>
+      <td class="neutral">no previous version to compare</td>
+      <td class="status-passed">PASSED</td>
+    </tr>
+<tr>
+      <td>lot-preset-custom-grading.spec.ts<span class="title">Creates a custom Lot preset, edits it, assigns it to a Group, then grades and confirms the preset was actually applied — exercises the custom-preset path, not just the shared default.</span></td>
+      <td>-</td>
+      <td>N/A</td>
+      <td>80.1s</td>
+      <td class="neutral">no previous version to compare</td>
+      <td class="status-passed">PASSED</td>
+    </tr>
+<tr>
+      <td>lot-block-v2-group-inspection.spec.ts<span class="title">Uploads and grades &quot;Lake Louisa&quot;, confirms the preset actually used for grading matches the configured grading defaults (via the Solution Summary panel), then walks every Group/Zone/Pond at a consistent zoom level across three view states — default 2D, an orbited 3D angle (checking the terrain for zero-elevation artifacts), and 2D with the lot mesh shown — comparing each capture against its last known-good baseline.</span></td>
+      <td>Lake Louisa</td>
+      <td>69.2s</td>
+      <td>102.1s</td>
+      <td class="bad">+47.4% slower</td>
+      <td class="status-passed">PASSED</td>
+    </tr>
+<tr>
+      <td>lot-block-v2-group-inspection.spec.ts<span class="title">Uploads and grades &quot;Coleman Ridge&quot;, confirms the preset actually used for grading matches the configured grading defaults (via the Solution Summary panel), then walks every Group/Zone/Pond at a consistent zoom level across three view states — default 2D, an orbited 3D angle (checking the terrain for zero-elevation artifacts), and 2D with the lot mesh shown — comparing each capture against its last known-good baseline.</span></td>
+      <td>Coleman Ridge</td>
+      <td>308.6s</td>
+      <td>337.0s</td>
+      <td class="neutral">+9.2% (about the same)</td>
+      <td class="status-passed">PASSED</td>
+    </tr>
+<tr>
+      <td>lot-block-v2-group-inspection.spec.ts<span class="title">Uploads and grades &quot;Coleman Ridge Ph2&quot;, confirms the preset actually used for grading matches the configured grading defaults (via the Solution Summary panel), then walks every Group/Zone/Pond at a consistent zoom level across three view states — default 2D, an orbited 3D angle (checking the terrain for zero-elevation artifacts), and 2D with the lot mesh shown — comparing each capture against its last known-good baseline.</span></td>
+      <td>Coleman Ridge Ph2</td>
+      <td>N/A</td>
+      <td>628.3s</td>
+      <td class="neutral">no previous version to compare</td>
+      <td class="status-passed">PASSED</td>
+    </tr>
+<tr>
+      <td>lot-block-v2-group-inspection.spec.ts<span class="title">Uploads and grades &quot;Goose Creek&quot;, confirms the preset actually used for grading matches the configured grading defaults (via the Solution Summary panel), then walks every Group/Zone/Pond at a consistent zoom level across three view states — default 2D, an orbited 3D angle (checking the terrain for zero-elevation artifacts), and 2D with the lot mesh shown — comparing each capture against its last known-good baseline.</span></td>
+      <td>Goose Creek</td>
+      <td>366.2s</td>
+      <td>353.1s</td>
+      <td class="neutral">-3.6% (about the same)</td>
+      <td class="status-passed">PASSED</td>
+    </tr>
+<tr>
+      <td>lot-block-v2-group-inspection.spec.ts<span class="title">Uploads and grades &quot;LSF Phase1&quot;, confirms the preset actually used for grading matches the configured grading defaults (via the Solution Summary panel), then walks every Group/Zone/Pond at a consistent zoom level across three view states — default 2D, an orbited 3D angle (checking the terrain for zero-elevation artifacts), and 2D with the lot mesh shown — comparing each capture against its last known-good baseline.</span></td>
+      <td>LSF Phase1</td>
+      <td>476.4s</td>
+      <td>467.6s</td>
+      <td class="neutral">-1.9% (about the same)</td>
+      <td class="status-passed">PASSED</td>
+    </tr>
+<tr>
+      <td>lot-block-v2-group-inspection.spec.ts<span class="title">Uploads and grades &quot;LSF Phase2&quot;, confirms the preset actually used for grading matches the configured grading defaults (via the Solution Summary panel), then walks every Group/Zone/Pond at a consistent zoom level across three view states — default 2D, an orbited 3D angle (checking the terrain for zero-elevation artifacts), and 2D with the lot mesh shown — comparing each capture against its last known-good baseline.</span></td>
+      <td>LSF Phase2</td>
+      <td>921.2s</td>
+      <td>911.8s</td>
+      <td class="neutral">-1.0% (about the same)</td>
+      <td class="status-passed">PASSED</td>
+    </tr>
+      </tbody>
+    </table>
+  </details>
+  
+  <details class="section" open>
+    <summary>Timing history</summary>
+    <table>
+      <thead>
+        <tr><th>File</th><th>v0.74.110</th><th>v0.74.111</th><th>v0.74.113</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Coleman Ridge</td><td>387.1s / 6.5 mins</td><td>308.6s / 5.1 mins</td><td>337.0s / 5.6 mins</td></tr>
+<tr><td>Coleman Ridge Ph2</td><td>N/A</td><td>N/A</td><td>628.3s / 10.5 mins</td></tr>
+<tr><td>Goose Creek</td><td>557.1s / 9.3 mins</td><td>366.2s / 6.1 mins</td><td>353.1s / 5.9 mins</td></tr>
+<tr><td>Lake Louisa</td><td>113.3s / 1.9 mins</td><td>69.2s / 1.2 mins</td><td>102.1s / 1.7 mins</td></tr>
+<tr><td>LSF Phase1</td><td>N/A</td><td>476.4s / 7.9 mins</td><td>467.6s / 7.8 mins</td></tr>
+<tr><td>LSF Phase2</td><td>N/A</td><td>921.2s / 15.4 mins</td><td>911.8s / 15.2 mins</td></tr>
+      </tbody>
+    </table>
+  </details>
+  <script>
+    (function () {
+      var lightbox = document.getElementById('lightbox');
+      var lightboxImg = document.getElementById('lightbox-img');
+      document.addEventListener('click', function (event) {
+        var target = event.target;
+        if (target && target.tagName === 'IMG' && target.closest('.images')) {
+          lightboxImg.src = target.src;
+          lightbox.classList.add('open');
+        } else if (target === lightbox) {
+          lightbox.classList.remove('open');
+        }
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') lightbox.classList.remove('open');
+      });
+    })();
+  </script>
+</body>
+</html>

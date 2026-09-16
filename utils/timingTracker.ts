@@ -11,14 +11,19 @@ const SIGNIFICANT_INCREASE_RATIO = 0.3;
 // Keep enough history to see a trend per file+environment without the file growing forever.
 const MAX_ENTRIES_PER_KEY = 10;
 
-interface TimingEntry {
+export interface TimingEntry {
   durationMs: number;
   recordedAt: string;
   /** e.g. "Source: Development · v0.74.109" — read from the home page, when available. */
   appVersion?: string;
 }
 
-type TimingHistory = Record<string, TimingEntry[]>;
+export type TimingHistory = Record<string, TimingEntry[]>;
+
+/** Exposed so utils/testRunReporter.ts can build a full timing-history table, not just the single previous-vs-current comparison recordAndCheckTiming reports per test. */
+export function getTimingHistory(): TimingHistory {
+  return readHistory();
+}
 
 function readHistory(): TimingHistory {
   let raw: Record<string, unknown>;
@@ -65,6 +70,13 @@ export function recordAndCheckTiming(
   const entries = history[historyKey] ?? [];
   const previous = entries[entries.length - 1];
 
+  // The most recent entry recorded under a DIFFERENT app version than this run's — used by the
+  // report to answer "how does this version compare to the one before it", which is a different
+  // question than `previous` above (the literal last run, possibly the same version re-run).
+  const previousVersionEntry = appVersion
+    ? [...entries].reverse().find((entry) => entry.appVersion && entry.appVersion !== appVersion)
+    : undefined;
+
   // Structured twin of the human-readable annotations below, for utils/testRunReporter.ts to
   // read reliably instead of parsing formatted text.
   testInfo.annotations.push({
@@ -77,6 +89,8 @@ export function recordAndCheckTiming(
       previousDurationMs: previous?.durationMs,
       previousAppVersion: previous?.appVersion,
       previousRecordedAt: previous?.recordedAt,
+      previousVersionDurationMs: previousVersionEntry?.durationMs,
+      previousVersion: previousVersionEntry?.appVersion,
     }),
   });
 

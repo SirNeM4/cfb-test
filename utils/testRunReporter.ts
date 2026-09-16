@@ -1,6 +1,7 @@
 import type { Reporter, TestCase, TestResult, FullResult } from '@playwright/test/reporter';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getTimingHistory } from './timingTracker';
 
 const REPORTS_DIR = path.resolve(__dirname, '..', 'test-run-reports');
 
@@ -9,7 +10,7 @@ const REPORTS_DIR = path.resolve(__dirname, '..', 'test-run-reports');
 // run notably different from last time" — at the ±15% the report was asked to use.
 const TIME_TOLERANCE = 0.15;
 
-interface TimingData {
+export interface TimingData {
   key: string;
   host: string;
   durationMs: number;
@@ -17,16 +18,19 @@ interface TimingData {
   previousDurationMs?: number;
   previousAppVersion?: string;
   previousRecordedAt?: string;
+  /** Duration/version of the most recent run on a DIFFERENT app version — what the report compares against. */
+  previousVersionDurationMs?: number;
+  previousVersion?: string;
 }
 
-interface ImageTrio {
+export interface ImageTrio {
   name: string;
   expected?: string;
   actual?: string;
   diff?: string;
 }
 
-interface TestRecord {
+export interface TestRecord {
   title: string;
   specFile: string;
   project: string;
@@ -61,117 +65,246 @@ function toDataUri(filePath: string): string | null {
   }
 }
 
+function recordVersion(record: TestRecord): string | undefined {
+  return record.appVersion ?? record.timing?.appVersion;
+}
+
+const KNOWN_ACRONYMS = new Set(['lsf']);
+
+/** e.g. "lake-louisa" -> "Lake Louisa"; "lsf-phase1" -> "LSF Phase1". */
+function formatMapName(key: string): string {
+  return key
+    .split('-')
+    .map((word) =>
+      KNOWN_ACRONYMS.has(word.toLowerCase())
+        ? word.toUpperCase()
+        : word.charAt(0).toUpperCase() + word.slice(1)
+    )
+    .join(' ');
+}
+
 /**
- * Generates a self-contained HTML report after every test run: which spec files ran, how long
- * each took vs. its last recorded run (±15% = notably faster/slower, else about the same), pass/
- * fail status, and — for any screenshot comparison that actually differed — the baseline, actual,
- * and diff images side by side. Saved under test-run-reports/, named after the app version the
- * run tested against so reports for different releases don't overwrite each other.
- *
- * Relies on utils/timingTracker.ts's 'timing-data' annotation for the structured duration/version
- * numbers, rather than re-deriving them, so the two stay consistent by construction.
+ * A short, human-oriented description of what this test does and why it exists — richer than
+ * Playwright's raw title, which for these specs is either too generic (setup/preset tests all
+ * just say "configured"/"applied") or too literal (the group-inspection test's title is just the
+ * uploaded file name, with no hint of what "looks the same" actually checks).
  */
-export default class TestRunReporter implements Reporter {
-  private records: TestRecord[] = [];
+function describeTest(record: TestRecord): string {
+  if (record.specFile === 'grading-settings.setup.ts') {
+    return 'Configures the shared default grading preset once, before anything else runs — every other test in the suite depends on this being in place first.';
+  }
+  if (record.specFile === 'lot-preset-custom-grading.spec.ts') {
+    return "Creates a custom Lot preset, edits it, assigns it to a Group, then grades and confirms the preset was actually applied — exercises the custom-preset path, not just the shared default.";
+  }
+  if (record.specFile === 'lot-block-v2-group-inspection.spec.ts') {
+    const mapName = record.timing?.key ? formatMapName(record.timing.key) : null;
+    const subject = mapName ? `"${mapName}"` : 'a lot-block file';
+    return (
+      `Uploads and grades ${subject}, confirms the preset actually used for grading matches the ` +
+      `configured grading defaults (via the Solution Summary panel), then walks every ` +
+      `Group/Zone/Pond at a consistent zoom level across three view states — default 2D, an ` +
+      `orbited 3D angle (checking the terrain for zero-elevation artifacts), and 2D with the lot ` +
+      `mesh shown — comparing each capture against its last known-good baseline.`
+    );
+  }
+  return record.title;
+}
 
-  onTestEnd(test: TestCase, result: TestResult): void {
-    let timing: TimingData | undefined;
-    let appVersion: string | undefined;
-    const notes: string[] = [];
+function formatSeconds(ms: number | undefined): string {
+  return ms === undefined ? 'N/A' : `${(ms / 1000).toFixed(1)}s`;
+}
 
-    for (const annotation of result.annotations) {
-      if (annotation.type === 'timing-data' && annotation.description) {
-        try {
-          timing = JSON.parse(annotation.description) as TimingData;
-        } catch {
-          // Malformed — skip rather than crash the whole report.
-        }
-      } else if (annotation.type === 'app-version' && annotation.description) {
-        appVersion = annotation.description;
-      } else if (annotation.type === 'timing-regression' || annotation.type === 'visual-baseline') {
-        if (annotation.description) notes.push(annotation.description);
+/** e.g. 337045 -> "337.0s / 5.6 mins" — used by the Timing history table, where runs span minutes. */
+function formatSecondsAndMinutes(ms: number | undefined): string {
+  return ms === undefined ? 'N/A' : `${(ms / 1000).toFixed(1)}s / ${(ms / 60000).toFixed(1)} mins`;
+}
+
+/** e.g. "Source: Development · v0.74.110" -> "v0.74.110", for compact table cells. */
+function shortVersion(version: string | undefined): string {
+  if (!version) return 'N/A';
+  const match = version.match(/v?([\d.]+)/);
+  return match ? `v${match[1]}` : version;
+}
+
+function isFailure(record: TestRecord): boolean {
+  return record.status !== 'passed' && record.status !== 'skipped';
+}
+
+/** Compares this run's duration against the last run recorded on a DIFFERENT app version. */
+function durationVerdict(timing: TimingData | undefined): { label: string; cssClass: string } {
+  if (!timing || timing.previousVersionDurationMs === undefined) {
+    return { label: 'no previous version to compare', cssClass: 'neutral' };
+  }
+  const ratio = (timing.durationMs - timing.previousVersionDurationMs) / timing.previousVersionDurationMs;
+  const pct = `${ratio >= 0 ? '+' : ''}${(ratio * 100).toFixed(1)}%`;
+  if (ratio >= TIME_TOLERANCE) return { label: `${pct} slower`, cssClass: 'bad' };
+  if (ratio <= -TIME_TOLERANCE) return { label: `${pct} faster`, cssClass: 'good' };
+  return { label: `${pct} (about the same)`, cssClass: 'neutral' };
+}
+
+/** e.g. "Source: Development · v0.74.110" -> "development-v0.74.110". */
+function reportVersionSlug(records: TestRecord[]): string {
+  const versioned = records.map((r) => recordVersion(r)).find(Boolean);
+  const match = versioned?.match(/Source:\s*([A-Za-z]+).*?v?([\d.]+)/i);
+  return match ? `${match[1].toLowerCase()}-v${match[2]}` : 'unknown-version';
+}
+
+/**
+ * Row in the top "All tests" table: file, the map it graded (when this test tracks one — see
+ * utils/timingTracker.ts), how long the previous vs. current app version took, the verdict on
+ * that comparison, and pass/fail. Failed tests' names link down to their full write-up in the
+ * "Failed tests" table.
+ */
+function buildSummaryRowHtml(record: TestRecord, index: number): string {
+  const fileLabel = `${escapeHtml(record.specFile)}<span class="title">${escapeHtml(describeTest(record))}</span>`;
+  const fileCell = isFailure(record) ? `<a href="#test-${index}">${fileLabel}</a>` : fileLabel;
+  const mapName = record.timing?.key ? formatMapName(record.timing.key) : '-';
+  const previousTime = formatSeconds(record.timing?.previousVersionDurationMs);
+  const currentTime = formatSeconds(record.timing?.durationMs ?? record.durationMs);
+  const verdict = durationVerdict(record.timing);
+
+  return `<tr>
+      <td>${fileCell}</td>
+      <td>${escapeHtml(mapName)}</td>
+      <td>${previousTime}</td>
+      <td>${currentTime}</td>
+      <td class="${verdict.cssClass}">${verdict.label}</td>
+      <td class="status-${record.status}">${record.status.toUpperCase()}</td>
+    </tr>`;
+}
+
+/**
+ * Row in the "Failed tests" table — full detail: what/where (file, map, status), this run's
+ * version and duration, the last DIFFERENT version's duration for comparison, the verdict, and
+ * any error/diff/failure images.
+ */
+function buildDetailRowHtml(record: TestRecord, index: number): string {
+  const verdict = durationVerdict(record.timing);
+  const mapName = record.timing?.key ? formatMapName(record.timing.key) : '-';
+  const currentVersion = shortVersion(recordVersion(record));
+  const currentDuration = formatSeconds(record.durationMs);
+  const previousVersion = shortVersion(record.timing?.previousVersion);
+  const previousDuration = formatSeconds(record.timing?.previousVersionDurationMs);
+
+  const errorHtml = record.errors.length ? `<div class="error">${escapeHtml(record.errors.join('\n\n'))}</div>` : '';
+  const notesHtml = record.notes.map((n) => `<div class="note">${escapeHtml(n)}</div>`).join('');
+  const imagesHtml = record.images.length
+    ? `<div class="diff-block">${record.images.map((img) => buildImageTrioHtml(img)).join('')}</div>`
+    : '';
+  const failureScreenshotsHtml = record.failureScreenshots.length
+    ? `<div class="diff-block">${record.failureScreenshots
+        .map((p) => buildSingleImageHtml('Full-page screenshot at failure', p))
+        .join('')}</div>`
+    : '';
+
+  return `<tr id="test-${index}">
+      <td>${escapeHtml(record.specFile)}<span class="title">${escapeHtml(describeTest(record))} &middot; project: ${escapeHtml(record.project)}</span></td>
+      <td>${escapeHtml(mapName)}</td>
+      <td class="status-${record.status}">${record.status.toUpperCase()}</td>
+      <td>${previousVersion}</td>
+      <td>${previousDuration}</td>
+      <td>${currentVersion}</td>
+      <td>${currentDuration}</td>
+      <td class="${verdict.cssClass}">${verdict.label}</td>
+      <td>${errorHtml}${notesHtml}${imagesHtml}${failureScreenshotsHtml}</td>
+    </tr>`;
+}
+
+function buildSingleImageHtml(label: string, filePath: string): string {
+  const dataUri = toDataUri(filePath);
+  if (!dataUri) return '';
+  return `<div class="images"><figure><img src="${dataUri}" loading="lazy"><figcaption>${escapeHtml(label)}</figcaption></figure></div>`;
+}
+
+function buildImageTrioHtml(img: ImageTrio): string {
+  const figures: string[] = [];
+  const addFigure = (label: string, filePath?: string) => {
+    if (!filePath) return;
+    const dataUri = toDataUri(filePath);
+    if (!dataUri) return;
+    figures.push(`<figure><img src="${dataUri}" loading="lazy"><figcaption>${label}</figcaption></figure>`);
+  };
+  addFigure('Baseline (previous)', img.expected);
+  addFigure('Actual (this run)', img.actual);
+  addFigure('Diff', img.diff);
+
+  return `<div class="diff-name">${escapeHtml(img.name)}</div><div class="images">${figures.join('')}</div>`;
+}
+
+/**
+ * A file-by-version matrix built straight from timing-history.json (not from `records`, which
+ * only ever carries the current run plus its immediate previous-version comparison) — so this is
+ * the one place the report shows the full trend across every recorded app version, not just the
+ * last two. A cell is "N/A" when that file was never recorded against that version.
+ */
+function buildTimingHistoryTableHtml(hosts: string[]): string {
+  const history = getTimingHistory();
+  const hostSet = new Set(hosts);
+
+  const durationByKeyAndVersion = new Map<string, Map<string, number>>();
+  const versionFirstSeenAt = new Map<string, string>();
+
+  for (const [historyKey, entries] of Object.entries(history)) {
+    const at = historyKey.lastIndexOf('@');
+    if (at === -1) continue;
+    const key = historyKey.slice(0, at);
+    const host = historyKey.slice(at + 1);
+    if (!hostSet.has(host)) continue;
+
+    const versionDurations = durationByKeyAndVersion.get(key) ?? new Map<string, number>();
+    for (const entry of entries) {
+      if (!entry.appVersion) continue;
+      // Entries are chronological, so the last write for a given version is its most recent run.
+      versionDurations.set(entry.appVersion, entry.durationMs);
+      if (!versionFirstSeenAt.has(entry.appVersion) || entry.recordedAt < versionFirstSeenAt.get(entry.appVersion)!) {
+        versionFirstSeenAt.set(entry.appVersion, entry.recordedAt);
       }
     }
-
-    this.records.push({
-      title: test.title,
-      specFile: path.basename(test.location.file),
-      project: test.parent.project()?.name ?? '',
-      status: result.status,
-      durationMs: result.duration,
-      errors: result.errors.map((e) => e.message).filter((m): m is string => !!m).map(stripAnsi),
-      images: this.collectImages(result),
-      failureScreenshots: result.attachments
-        .filter((a) => a.name === 'screenshot' && a.path && a.contentType === 'image/png')
-        .map((a) => a.path as string),
-      timing,
-      appVersion,
-      notes,
-    });
+    durationByKeyAndVersion.set(key, versionDurations);
   }
 
-  /** Screenshot-comparison failures attach "<name>-expected"/"-actual"/"-diff" images; group them. */
-  private collectImages(result: TestResult): ImageTrio[] {
-    const groups = new Map<string, ImageTrio>();
-    for (const attachment of result.attachments) {
-      if (!attachment.path || attachment.contentType !== 'image/png') continue;
-      const match = attachment.name.match(/^(.*)-(expected|actual|diff)\.png$/);
-      if (!match) continue;
-      const [, name, kind] = match;
-      const entry = groups.get(name) ?? { name };
-      entry[kind as 'expected' | 'actual' | 'diff'] = attachment.path;
-      groups.set(name, entry);
-    }
-    return [...groups.values()];
-  }
+  if (durationByKeyAndVersion.size === 0) return '';
 
-  onEnd(_result: FullResult): void {
-    if (this.records.length === 0) return;
+  const versions = [...versionFirstSeenAt.keys()].sort((a, b) =>
+    versionFirstSeenAt.get(a)!.localeCompare(versionFirstSeenAt.get(b)!)
+  );
 
-    fs.mkdirSync(REPORTS_DIR, { recursive: true });
-    const fileName = `${this.reportVersionSlug()}-${new Date().toISOString().replace(/[:.]/g, '-')}.html`;
-    const filePath = path.join(REPORTS_DIR, fileName);
-    fs.writeFileSync(filePath, this.buildHtml());
-    console.log(`\nTest run report: ${filePath}`);
-  }
+  const headerCells = versions.map((v) => `<th>${escapeHtml(shortVersion(v))}</th>`).join('');
+  const rows = [...durationByKeyAndVersion.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, versionDurations]) => {
+      const cells = versions.map((v) => `<td>${formatSecondsAndMinutes(versionDurations.get(v))}</td>`).join('');
+      return `<tr><td>${escapeHtml(formatMapName(key))}</td>${cells}</tr>`;
+    })
+    .join('\n');
 
-  private recordVersion(record: TestRecord): string | undefined {
-    return record.appVersion ?? record.timing?.appVersion;
-  }
+  return `<details class="section" open>
+    <summary>Timing history</summary>
+    <table>
+      <thead>
+        <tr><th>File</th>${headerCells}</tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  </details>`;
+}
 
-  /** e.g. "Source: Development · v0.74.110" -> "development-v0.74.110". */
-  private reportVersionSlug(): string {
-    const versioned = this.records.map((r) => this.recordVersion(r)).find(Boolean);
-    const match = versioned?.match(/Source:\s*([A-Za-z]+).*?v?([\d.]+)/i);
-    return match ? `${match[1].toLowerCase()}-v${match[2]}` : 'unknown-version';
-  }
+/**
+ * Builds the full report HTML from a list of records. Exported (and free of any dependency on the
+ * live Playwright Reporter lifecycle) so a report can also be regenerated later from
+ * already-recorded results — e.g. after tweaking the report's layout — without re-running tests.
+ */
+export function buildReportHtml(records: TestRecord[]): string {
+  const passed = records.filter((r) => r.status === 'passed').length;
+  const failedRecords = records.map((record, index) => ({ record, index })).filter(({ record }) => isFailure(record));
+  const failed = failedRecords.length;
+  const skipped = records.filter((r) => r.status === 'skipped').length;
+  const hosts = [...new Set(records.map((r) => r.timing?.host).filter((h): h is string => !!h))];
+  const versions = [...new Set(records.map((r) => recordVersion(r)).filter(Boolean))];
 
-  private durationVerdict(timing: TimingData | undefined): { label: string; cssClass: string } {
-    if (!timing || timing.previousDurationMs === undefined) {
-      return { label: 'first run recorded', cssClass: 'neutral' };
-    }
-    const ratio = (timing.durationMs - timing.previousDurationMs) / timing.previousDurationMs;
-    const pct = `${ratio >= 0 ? '+' : ''}${(ratio * 100).toFixed(1)}%`;
-    if (ratio >= TIME_TOLERANCE) return { label: `${pct} slower`, cssClass: 'bad' };
-    if (ratio <= -TIME_TOLERANCE) return { label: `${pct} faster`, cssClass: 'good' };
-    return { label: `${pct} (about the same)`, cssClass: 'neutral' };
-  }
-
-  private isFailure(record: TestRecord): boolean {
-    return record.status !== 'passed' && record.status !== 'skipped';
-  }
-
-  private buildHtml(): string {
-    const passed = this.records.filter((r) => r.status === 'passed').length;
-    const failedRecords = this.records
-      .map((record, index) => ({ record, index }))
-      .filter(({ record }) => this.isFailure(record));
-    const failed = failedRecords.length;
-    const skipped = this.records.filter((r) => r.status === 'skipped').length;
-    const hosts = [...new Set(this.records.map((r) => r.timing?.host).filter(Boolean))];
-    const versions = [...new Set(this.records.map((r) => this.recordVersion(r)).filter(Boolean))];
-
-    return `<!doctype html>
+  return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8">
@@ -206,6 +339,10 @@ export default class TestRunReporter implements Reporter {
   #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 1000; align-items: center; justify-content: center; cursor: zoom-out; padding: 24px; box-sizing: border-box; }
   #lightbox.open { display: flex; }
   #lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 0 24px rgba(0,0,0,0.6); }
+  details.section { margin: 28px 0 10px; }
+  details.section > summary { font-size: 15px; font-weight: 600; cursor: pointer; padding: 4px 0; }
+  details.section > summary::marker { color: #9aa0a6; }
+  details.section table { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -218,44 +355,56 @@ export default class TestRunReporter implements Reporter {
       <span>App version: ${escapeHtml(versions.join(', ') || 'n/a')}</span>
     </div>
     <div class="summary">
-      <span>${this.records.length} tests</span>
+      <span>${records.length} tests</span>
       <span class="status-passed">${passed} passed</span>
       <span class="status-failed">${failed} failed</span>
       <span class="status-skipped">${skipped} skipped</span>
     </div>
   </div>
-  <h2>All tests</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>File</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${this.records.map((r, i) => this.buildSummaryRowHtml(r, i)).join('\n')}
-    </tbody>
-  </table>
+  <details class="section" open>
+    <summary>All tests</summary>
+    <table>
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Map</th>
+          <th>Previous version time</th>
+          <th>Current version time</th>
+          <th>vs previous version (&plusmn;15%)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${records.map((r, i) => buildSummaryRowHtml(r, i)).join('\n')}
+      </tbody>
+    </table>
+  </details>
   ${
     failedRecords.length > 0
-      ? `<h2>Failed tests</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>File</th>
-        <th>Status</th>
-        <th>Duration</th>
-        <th>vs previous run (&plusmn;15%)</th>
-        <th>App version</th>
-        <th>Details</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${failedRecords.map(({ record, index }) => this.buildDetailRowHtml(record, index)).join('\n')}
-    </tbody>
-  </table>`
+      ? `<details class="section" open>
+    <summary>Failed tests</summary>
+    <table>
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Map</th>
+          <th>Status</th>
+          <th>Previous version</th>
+          <th>Previous duration</th>
+          <th>Current version</th>
+          <th>Current duration</th>
+          <th>vs previous version (&plusmn;15%)</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${failedRecords.map(({ record, index }) => buildDetailRowHtml(record, index)).join('\n')}
+      </tbody>
+    </table>
+  </details>`
       : ''
   }
+  ${buildTimingHistoryTableHtml(hosts)}
   <script>
     (function () {
       var lightbox = document.getElementById('lightbox');
@@ -276,65 +425,97 @@ export default class TestRunReporter implements Reporter {
   </script>
 </body>
 </html>`;
+}
+
+/**
+ * Writes `buildReportHtml(records)` to test-run-reports/, named after the app version the run
+ * tested against so reports for different releases don't overwrite each other. Exported so the
+ * same "generate and save" step can be reused outside the live Reporter (see `buildReportHtml`).
+ */
+export function writeReport(records: TestRecord[]): string {
+  fs.mkdirSync(REPORTS_DIR, { recursive: true });
+  const fileName = `${reportVersionSlug(records)}-${new Date().toISOString().replace(/[:.]/g, '-')}.html`;
+  const filePath = path.join(REPORTS_DIR, fileName);
+  fs.writeFileSync(filePath, buildReportHtml(records));
+  return filePath;
+}
+
+/**
+ * Generates a self-contained HTML report after every test run: which spec files ran, which map
+ * each one graded and how long the previous vs. current app version took on it, pass/fail status,
+ * and — for any screenshot comparison that actually differed — the baseline, actual, and diff
+ * images side by side.
+ *
+ * Relies on utils/timingTracker.ts's 'timing-data' annotation for the structured duration/version
+ * numbers, rather than re-deriving them, so the two stay consistent by construction.
+ *
+ * playwright.config.ts retries a failed test once. `onTestEnd` fires once per attempt with the
+ * same `test.id`, so records are keyed by it and each attempt overwrites the last — the report
+ * ends up with one unified row per test (the final attempt's result), not one row per attempt.
+ */
+export default class TestRunReporter implements Reporter {
+  private recordsByTestId = new Map<string, TestRecord>();
+
+  onTestEnd(test: TestCase, result: TestResult): void {
+    let timing: TimingData | undefined;
+    let appVersion: string | undefined;
+    const notes: string[] = [];
+
+    for (const annotation of result.annotations) {
+      if (annotation.type === 'timing-data' && annotation.description) {
+        try {
+          timing = JSON.parse(annotation.description) as TimingData;
+        } catch {
+          // Malformed — skip rather than crash the whole report.
+        }
+      } else if (annotation.type === 'app-version' && annotation.description) {
+        appVersion = annotation.description;
+      } else if (annotation.type === 'timing-regression' || annotation.type === 'visual-baseline') {
+        if (annotation.description) notes.push(annotation.description);
+      }
+    }
+
+    if (result.retry > 0) {
+      notes.push(
+        `Retried once — the first attempt failed; this run's final result (${result.status}) came from the retry.`
+      );
+    }
+
+    this.recordsByTestId.set(test.id, {
+      title: test.title,
+      specFile: path.basename(test.location.file),
+      project: test.parent.project()?.name ?? '',
+      status: result.status,
+      durationMs: result.duration,
+      errors: result.errors.map((e) => e.message).filter((m): m is string => !!m).map(stripAnsi),
+      images: this.collectImages(result),
+      failureScreenshots: result.attachments
+        .filter((a) => a.name === 'screenshot' && a.path && a.contentType === 'image/png')
+        .map((a) => a.path as string),
+      timing,
+      appVersion,
+      notes,
+    });
   }
 
-  /** Row in the top "All tests" table — just enough to see what ran and whether it passed. Failed
-   *  tests' names link down to their full write-up in the "Failed tests" table. */
-  private buildSummaryRowHtml(record: TestRecord, index: number): string {
-    const fileLabel = `${escapeHtml(record.specFile)}<span class="title">${escapeHtml(record.title)}</span>`;
-    const fileCell = this.isFailure(record) ? `<a href="#test-${index}">${fileLabel}</a>` : fileLabel;
-    return `<tr>
-      <td>${fileCell}</td>
-      <td class="status-${record.status}">${record.status.toUpperCase()}</td>
-    </tr>`;
+  /** Screenshot-comparison failures attach "<name>-expected"/"-actual"/"-diff" images; group them. */
+  private collectImages(result: TestResult): ImageTrio[] {
+    const groups = new Map<string, ImageTrio>();
+    for (const attachment of result.attachments) {
+      if (!attachment.path || attachment.contentType !== 'image/png') continue;
+      const match = attachment.name.match(/^(.*)-(expected|actual|diff)\.png$/);
+      if (!match) continue;
+      const [, name, kind] = match;
+      const entry = groups.get(name) ?? { name };
+      entry[kind as 'expected' | 'actual' | 'diff'] = attachment.path;
+      groups.set(name, entry);
+    }
+    return [...groups.values()];
   }
 
-  /** Row in the "Failed tests" table — full detail: duration comparison, error, and any diff/failure images. */
-  private buildDetailRowHtml(record: TestRecord, index: number): string {
-    const verdict = this.durationVerdict(record.timing);
-    const durationSec = (record.durationMs / 1000).toFixed(1);
-    const previousSec =
-      record.timing?.previousDurationMs !== undefined ? (record.timing.previousDurationMs / 1000).toFixed(1) : null;
-
-    const errorHtml = record.errors.length ? `<div class="error">${escapeHtml(record.errors.join('\n\n'))}</div>` : '';
-    const notesHtml = record.notes.map((n) => `<div class="note">${escapeHtml(n)}</div>`).join('');
-    const imagesHtml = record.images.length
-      ? `<div class="diff-block">${record.images.map((img) => this.buildImageTrioHtml(img)).join('')}</div>`
-      : '';
-    const failureScreenshotsHtml = record.failureScreenshots.length
-      ? `<div class="diff-block">${record.failureScreenshots
-          .map((p) => this.buildSingleImageHtml('Full-page screenshot at failure', p))
-          .join('')}</div>`
-      : '';
-
-    return `<tr id="test-${index}">
-      <td>${escapeHtml(record.specFile)}<span class="title">${escapeHtml(record.title)} &middot; project: ${escapeHtml(record.project)}</span></td>
-      <td class="status-${record.status}">${record.status.toUpperCase()}</td>
-      <td>${durationSec}s</td>
-      <td class="${verdict.cssClass}">${verdict.label}${previousSec !== null ? ` <span class="title" style="display:inline">(prev ${previousSec}s)</span>` : ''}</td>
-      <td>${escapeHtml(this.recordVersion(record) ?? '-')}</td>
-      <td>${errorHtml}${notesHtml}${imagesHtml}${failureScreenshotsHtml}</td>
-    </tr>`;
-  }
-
-  private buildSingleImageHtml(label: string, filePath: string): string {
-    const dataUri = toDataUri(filePath);
-    if (!dataUri) return '';
-    return `<div class="images"><figure><img src="${dataUri}" loading="lazy"><figcaption>${escapeHtml(label)}</figcaption></figure></div>`;
-  }
-
-  private buildImageTrioHtml(img: ImageTrio): string {
-    const figures: string[] = [];
-    const addFigure = (label: string, filePath?: string) => {
-      if (!filePath) return;
-      const dataUri = toDataUri(filePath);
-      if (!dataUri) return;
-      figures.push(`<figure><img src="${dataUri}" loading="lazy"><figcaption>${label}</figcaption></figure>`);
-    };
-    addFigure('Baseline (previous)', img.expected);
-    addFigure('Actual (this run)', img.actual);
-    addFigure('Diff', img.diff);
-
-    return `<div class="diff-name">${escapeHtml(img.name)}</div><div class="images">${figures.join('')}</div>`;
+  onEnd(_result: FullResult): void {
+    if (this.recordsByTestId.size === 0) return;
+    const filePath = writeReport([...this.recordsByTestId.values()]);
+    console.log(`\nTest run report: ${filePath}`);
   }
 }

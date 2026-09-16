@@ -1,31 +1,6 @@
 {
   "lake-louisa@app-dev.drtwrk.io": [
     {
-      "durationMs": 95854,
-      "recordedAt": "2026-09-15T15:47:29.812Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 107811,
-      "recordedAt": "2026-09-15T16:58:03.635Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 111126,
-      "recordedAt": "2026-09-15T17:07:22.326Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 111740,
-      "recordedAt": "2026-09-15T17:17:33.052Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 108099,
-      "recordedAt": "2026-09-15T18:02:19.874Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
       "durationMs": 106849,
       "recordedAt": "2026-09-15T18:12:11.891Z",
       "appVersion": "Source: Development · v0.74.110"
@@ -49,34 +24,34 @@
       "durationMs": 113261,
       "recordedAt": "2026-09-15T19:07:21.776Z",
       "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 69657,
+      "recordedAt": "2026-09-16T13:02:45.397Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 69530,
+      "recordedAt": "2026-09-16T14:00:05.563Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 67889,
+      "recordedAt": "2026-09-16T14:21:35.387Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 69231,
+      "recordedAt": "2026-09-16T14:27:43.436Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 102074,
+      "recordedAt": "2026-09-16T16:13:20.586Z",
+      "appVersion": "Source: Development · v0.74.113"
     }
   ],
   "coleman-ridge@app-dev.drtwrk.io": [
-    {
-      "durationMs": 322498,
-      "recordedAt": "2026-09-15T15:38:13.912Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 420918,
-      "recordedAt": "2026-09-15T15:52:54.883Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 425593,
-      "recordedAt": "2026-09-15T17:03:21.412Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 413905,
-      "recordedAt": "2026-09-15T17:12:25.015Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 409768,
-      "recordedAt": "2026-09-15T17:22:30.993Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
     {
       "durationMs": 407445,
       "recordedAt": "2026-09-15T18:07:19.249Z",
@@ -101,39 +76,34 @@
       "durationMs": 387100,
       "recordedAt": "2026-09-15T19:11:55.657Z",
       "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 291295,
+      "recordedAt": "2026-09-16T13:06:27.111Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 606111,
+      "recordedAt": "2026-09-16T14:09:02.231Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 292496,
+      "recordedAt": "2026-09-16T14:25:19.926Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 308641,
+      "recordedAt": "2026-09-16T14:31:42.851Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 336982,
+      "recordedAt": "2026-09-16T16:17:15.494Z",
+      "appVersion": "Source: Development · v0.74.113"
     }
   ],
   "goose-creek@app-dev.drtwrk.io": [
-    {
-      "durationMs": 469055,
-      "recordedAt": "2026-09-15T15:40:40.478Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 529490,
-      "recordedAt": "2026-09-15T15:54:43.421Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 507382,
-      "recordedAt": "2026-09-15T17:04:43.017Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 540178,
-      "recordedAt": "2026-09-15T17:14:31.378Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 533602,
-      "recordedAt": "2026-09-15T17:24:34.911Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
-    {
-      "durationMs": 515997,
-      "recordedAt": "2026-09-15T18:09:07.667Z",
-      "appVersion": "Source: Development · v0.74.110"
-    },
     {
       "durationMs": 590015,
       "recordedAt": "2026-09-15T18:22:56.412Z",
@@ -153,6 +123,36 @@
       "durationMs": 557125,
       "recordedAt": "2026-09-15T19:14:45.698Z",
       "appVersion": "Source: Development · v0.74.110"
+    },
+    {
+      "durationMs": 605844,
+      "recordedAt": "2026-09-16T13:11:41.661Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 257434,
+      "recordedAt": "2026-09-16T13:28:10.918Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 266656,
+      "recordedAt": "2026-09-16T14:03:22.767Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 294147,
+      "recordedAt": "2026-09-16T14:25:21.643Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 366184,
+      "recordedAt": "2026-09-16T14:32:40.387Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 353110,
+      "recordedAt": "2026-09-16T16:19:16.090Z",
+      "appVersion": "Source: Development · v0.74.113"
     }
   ],
   "lake-louisa@app-staging.drtwrk.io": [
@@ -189,6 +189,57 @@
       "durationMs": 391651,
       "recordedAt": "2026-09-15T14:23:25.282Z",
       "appVersion": "Source: Staging · v0.74.109"
+    }
+  ],
+  "lsf-phase1@app-dev.drtwrk.io": [
+    {
+      "durationMs": 421765,
+      "recordedAt": "2026-09-16T13:09:49.172Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 476408,
+      "recordedAt": "2026-09-16T14:08:05.143Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 467563,
+      "recordedAt": "2026-09-16T16:25:10.627Z",
+      "appVersion": "Source: Development · v0.74.113"
+    }
+  ],
+  "lsf-phase2@app-dev.drtwrk.io": [
+    {
+      "durationMs": 397709,
+      "recordedAt": "2026-09-16T13:13:13.260Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 399446,
+      "recordedAt": "2026-09-16T13:30:32.931Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 857624,
+      "recordedAt": "2026-09-16T13:47:44.307Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 921196,
+      "recordedAt": "2026-09-16T14:18:52.813Z",
+      "appVersion": "Source: Development · v0.74.111"
+    },
+    {
+      "durationMs": 911750,
+      "recordedAt": "2026-09-16T16:34:35.842Z",
+      "appVersion": "Source: Development · v0.74.113"
+    }
+  ],
+  "coleman-ridge-ph2@app-dev.drtwrk.io": [
+    {
+      "durationMs": 628267,
+      "recordedAt": "2026-09-16T17:07:07.584Z",
+      "appVersion": "Source: Development · v0.74.113"
     }
   ]
 }
