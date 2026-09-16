@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Test run report</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; background: #0f1115; color: #e6e6e6; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 28px 0 10px; }
+  a { color: #93c5fd; }
+  .meta { color: #9aa0a6; margin-bottom: 20px; font-size: 13px; line-height: 1.6; }
+  .summary span { margin-right: 16px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #2a2d34; padding: 8px 10px; text-align: left; font-size: 13px; vertical-align: top; }
+  th { background: #1a1d23; position: sticky; top: 0; }
+  tr:nth-child(even) { background: #14161b; }
+  tr:target { outline: 2px solid #f87171; outline-offset: -2px; }
+  .status-passed { color: #4ade80; font-weight: 600; }
+  .status-failed, .status-timedOut, .status-interrupted { color: #f87171; font-weight: 600; }
+  .status-skipped { color: #9aa0a6; font-weight: 600; }
+  .good { color: #4ade80; font-weight: 600; }
+  .bad { color: #f87171; font-weight: 600; }
+  .neutral { color: #facc15; font-weight: 600; }
+  .title { color: #9aa0a6; font-size: 11px; display: block; margin-top: 2px; }
+  .images { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .images figure { margin: 0; width: 260px; }
+  .images img { width: 100%; border: 1px solid #2a2d34; border-radius: 4px; display: block; cursor: zoom-in; }
+  .images figcaption { font-size: 11px; color: #9aa0a6; margin-top: 4px; }
+  .diff-block { margin-top: 10px; padding: 10px; background: #14161b; border-radius: 6px; }
+  .diff-name { font-size: 12px; color: #d1d5db; }
+  .error { white-space: pre-wrap; color: #f87171; font-size: 12px; background: #1a1214; padding: 8px; border-radius: 4px; margin-top: 6px; max-height: 200px; overflow: auto; }
+  .note { font-size: 12px; color: #facc15; margin-top: 6px; }
+  #lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 1000; align-items: center; justify-content: center; cursor: zoom-out; padding: 24px; box-sizing: border-box; }
+  #lightbox.open { display: flex; }
+  #lightbox img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 0 24px rgba(0,0,0,0.6); }
+</style>
+</head>
+<body>
+  <div id="lightbox"><img id="lightbox-img" src="" alt=""></div>
+  <h1>Playwright test run report</h1>
+  <div class="meta">
+    <div class="summary">
+      <span>Generated: 2026-09-16T13:48:01.119Z</span>
+      <span>Environment: app-dev.drtwrk.io</span>
+      <span>App version: Source: Development · v0.74.111</span>
+    </div>
+    <div class="summary">
+      <span>2 tests</span>
+      <span class="status-passed">2 passed</span>
+      <span class="status-failed">0 failed</span>
+      <span class="status-skipped">0 skipped</span>
+    </div>
+  </div>
+  <h2>All tests</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>File</th>
+        <th>Map</th>
+        <th>Previous version time</th>
+        <th>Current version time</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+      <td>grading-settings.setup.ts<span class="title">grading defaults are configured</span></td>
+      <td>-</td>
+      <td>-</td>
+      <td>11.3s</td>
+      <td class="status-passed">PASSED</td>
+    </tr>
+<tr>
+      <td>lot-block-v2-group-inspection.spec.ts<span class="title">every group/zone/pond looks the same on entry after grading &quot;LSF-Phase2-09162026.json&quot;</span></td>
+      <td>Lsf Phase2</td>
+      <td>399.4s</td>
+      <td>857.6s</td>
+      <td class="status-passed">PASSED</td>
+    </tr>
+    </tbody>
+  </table>
+  
+  <script>
+    (function () {
+      var lightbox = document.getElementById('lightbox');
+      var lightboxImg = document.getElementById('lightbox-img');
+      document.addEventListener('click', function (event) {
+        var target = event.target;
+        if (target && target.tagName === 'IMG' && target.closest('.images')) {
+          lightboxImg.src = target.src;
+          lightbox.classList.add('open');
+        } else if (target === lightbox) {
+          lightbox.classList.remove('open');
+        }
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') lightbox.classList.remove('open');
+      });
+    })();
+  </script>
+</body>
+</html>
