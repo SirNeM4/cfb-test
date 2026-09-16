@@ -68,12 +68,45 @@ function recordVersion(record: TestRecord): string | undefined {
   return record.appVersion ?? record.timing?.appVersion;
 }
 
-/** e.g. "lake-louisa" -> "Lake Louisa". */
+const KNOWN_ACRONYMS = new Set(['lsf']);
+
+/** e.g. "lake-louisa" -> "Lake Louisa"; "lsf-phase1" -> "LSF Phase1". */
 function formatMapName(key: string): string {
   return key
     .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) =>
+      KNOWN_ACRONYMS.has(word.toLowerCase())
+        ? word.toUpperCase()
+        : word.charAt(0).toUpperCase() + word.slice(1)
+    )
     .join(' ');
+}
+
+/**
+ * A short, human-oriented description of what this test does and why it exists — richer than
+ * Playwright's raw title, which for these specs is either too generic (setup/preset tests all
+ * just say "configured"/"applied") or too literal (the group-inspection test's title is just the
+ * uploaded file name, with no hint of what "looks the same" actually checks).
+ */
+function describeTest(record: TestRecord): string {
+  if (record.specFile === 'grading-settings.setup.ts') {
+    return 'Configures the shared default grading preset once, before anything else runs — every other test in the suite depends on this being in place first.';
+  }
+  if (record.specFile === 'lot-preset-custom-grading.spec.ts') {
+    return "Creates a custom Lot preset, edits it, assigns it to a Group, then grades and confirms the preset was actually applied — exercises the custom-preset path, not just the shared default.";
+  }
+  if (record.specFile === 'lot-block-v2-group-inspection.spec.ts') {
+    const mapName = record.timing?.key ? formatMapName(record.timing.key) : null;
+    const subject = mapName ? `"${mapName}"` : 'a lot-block file';
+    return (
+      `Uploads and grades ${subject}, confirms the preset actually used for grading matches the ` +
+      `configured grading defaults (via the Solution Summary panel), then walks every ` +
+      `Group/Zone/Pond at a consistent zoom level across three view states — default 2D, an ` +
+      `orbited 3D angle (checking the terrain for zero-elevation artifacts), and 2D with the lot ` +
+      `mesh shown — comparing each capture against its last known-good baseline.`
+    );
+  }
+  return record.title;
 }
 
 function formatSeconds(ms: number | undefined): string {
@@ -117,7 +150,7 @@ function reportVersionSlug(records: TestRecord[]): string {
  * "Failed tests" table.
  */
 function buildSummaryRowHtml(record: TestRecord, index: number): string {
-  const fileLabel = `${escapeHtml(record.specFile)}<span class="title">${escapeHtml(record.title)}</span>`;
+  const fileLabel = `${escapeHtml(record.specFile)}<span class="title">${escapeHtml(describeTest(record))}</span>`;
   const fileCell = isFailure(record) ? `<a href="#test-${index}">${fileLabel}</a>` : fileLabel;
   const mapName = record.timing?.key ? formatMapName(record.timing.key) : '-';
   const previousTime = formatSeconds(record.timing?.previousVersionDurationMs);
@@ -159,7 +192,7 @@ function buildDetailRowHtml(record: TestRecord, index: number): string {
     : '';
 
   return `<tr id="test-${index}">
-      <td>${escapeHtml(record.specFile)}<span class="title">${escapeHtml(record.title)} &middot; project: ${escapeHtml(record.project)}</span></td>
+      <td>${escapeHtml(record.specFile)}<span class="title">${escapeHtml(describeTest(record))} &middot; project: ${escapeHtml(record.project)}</span></td>
       <td>${escapeHtml(mapName)}</td>
       <td class="status-${record.status}">${record.status.toUpperCase()}</td>
       <td>${previousVersion}</td>
